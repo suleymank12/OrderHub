@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.OrderService.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.OrderService.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\OrderService\OrderService.Domain\OrderHub.OrderService.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Services\OrderService\OrderService.Application\OrderHub.OrderService.Application.csproj" />
+  </ItemGroup>
+
+  <!-- IsPackable / IsTestProject + Test.Sdk / xunit / runner / coverlet + Using Xunit
+       → tests/Directory.Build.props (ortak). Burada sadece projeye özel paketler. -->
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="AutoFixture" />
+    <PackageReference Include="AutoFixture.AutoMoq" />
+  </ItemGroup>
+
+</Project>

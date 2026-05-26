@@ -1,0 +1,49 @@
+# ======================================================================
+# OrderHub — .gitattributes
+# Windows'ta geliştirip Linux container'da çalıştırıyoruz → satır sonu
+# normalizasyonu kritik. Repoda her şey LF; container'a giren script'ler
+# CRLF görürse (\r) entrypoint patlar.
+# ======================================================================
+
+# Varsayılan: metin dosyaları otomatik algıla, repoda LF normalize et
+* text=auto eol=lf
+
+# --- Kaynak / yapılandırma → LF ---
+*.cs        text eol=lf
+*.csproj    text eol=lf
+*.props     text eol=lf
+*.targets   text eol=lf
+*.sln       text eol=crlf
+*.json      text eol=lf
+*.xml       text eol=lf
+*.config    text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.editorconfig text eol=lf
+
+# --- Container'da çalışacak script'ler → LF ŞART ---
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+.env*       text eol=lf
+
+# --- Windows script'leri → CRLF ---
+*.ps1       text eol=crlf
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+
+# --- Binary (normalizasyon UYGULANMAZ) ---
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.dll       binary
+*.exe       binary
+*.pdb       binary
+*.snk       binary
+*.pfx       binary
+*.zip       binary

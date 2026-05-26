@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.OrderService.Application</AssemblyName>
+    <RootNamespace>OrderHub.OrderService.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OrderService.Domain\OrderHub.OrderService.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- Versiyonlar kök Directory.Packages.props'ta (CPM). -->
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Mapster" />
+    <PackageReference Include="Mapster.DependencyInjection" />
+  </ItemGroup>
+
+</Project>

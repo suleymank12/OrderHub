@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Klasör kısa (OrderService.Domain), assembly/namespace tam (Karar 1). -->
+    <AssemblyName>OrderHub.OrderService.Domain</AssemblyName>
+    <RootNamespace>OrderHub.OrderService.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Common\OrderHub.Common.csproj" />
+  </ItemGroup>
+
+</Project>

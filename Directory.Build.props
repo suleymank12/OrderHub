@@ -1,0 +1,32 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Hedef framework: stack §3 kilidi, tüm projeler net8.0 (LTS). -->
+    <TargetFramework>net8.0</TargetFramework>
+
+    <!-- Explicit dil sürümü: "latest" yerine sabit → reproducible, SDK upgrade'i sessizce davranış değiştirmez. -->
+    <LangVersion>12.0</LangVersion>
+
+    <!-- Nullable + ImplicitUsings: CLAUDE.md §9 zorunlu. -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Warning = teknik borç. K5: "çalışıyor" yetmez → warning build'i kırar. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- .editorconfig kuralları "öneri" değil, build gate'i. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- Reproducible restore + supply-chain: lock file zorunlu, CI lock dogrulamasi (locked mode). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <!-- Container slimming (ICU yükü kalkar). Money VO decimal+currency tutar,
+         kültüre bağlı domain logic YOK → güvenli. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+</Project>

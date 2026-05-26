@@ -1,0 +1,32 @@
+<Project>
+
+  <!-- MSBuild yalnızca EN YAKIN Directory.Build.props'u otomatik alır; bu dosya kökü
+       gölgelemesin diye kök Directory.Build.props'u explicit zincirliyoruz. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <!-- Tüm test projelerinde ortak paketler (EK2). Projeye özel paketler csproj'lerde kalır. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Tüm test projelerinde global using (ImplicitUsings ile). xunit template'inin
+       csproj'de sağladığı 'global using Xunit;' artık burada, ortak. -->
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

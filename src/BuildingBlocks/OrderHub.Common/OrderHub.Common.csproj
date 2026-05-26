@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Bağımsız building block (CLAUDE.md §4: Domain hiçbir şeye bağlı değil → Common saf kalır).
+       ProjectReference YOK, PackageReference YOK.
+       TFM / Nullable / ImplicitUsings / LangVersion → kök Directory.Build.props.
+       AssemblyName = csproj adı = OrderHub.Common (zaten tam ad, ek property gerekmez). -->
+
+</Project>
