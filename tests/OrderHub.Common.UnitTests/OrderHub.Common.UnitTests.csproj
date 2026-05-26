@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.Common.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.Common.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.Common\OrderHub.Common.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri (Test.Sdk/xunit/runner/coverlet) + Using Xunit → tests/Directory.Build.props.
+       Primitive'lerin dış sınırı yok → Moq/AutoFixture YOK; sadece FluentAssertions. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+</Project>

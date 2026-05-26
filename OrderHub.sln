@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.OrderService.UnitT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.OrderService.IntegrationTests", "tests\OrderService.IntegrationTests\OrderHub.OrderService.IntegrationTests.csproj", "{F52C2984-EBC9-4DBE-991B-CF7DA14A13A6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.Common.UnitTests", "tests\OrderHub.Common.UnitTests\OrderHub.Common.UnitTests.csproj", "{F8ABB0CF-89F5-4F1B-B9EA-5C602A370EB4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -64,6 +66,10 @@ Global
 		{F52C2984-EBC9-4DBE-991B-CF7DA14A13A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F52C2984-EBC9-4DBE-991B-CF7DA14A13A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F52C2984-EBC9-4DBE-991B-CF7DA14A13A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8ABB0CF-89F5-4F1B-B9EA-5C602A370EB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8ABB0CF-89F5-4F1B-B9EA-5C602A370EB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8ABB0CF-89F5-4F1B-B9EA-5C602A370EB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8ABB0CF-89F5-4F1B-B9EA-5C602A370EB4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A326A5EC-9671-4D6D-8B8B-503E6D146E7A} = {81B9C654-3B5F-4587-B481-8B3379AF0617}
@@ -76,5 +82,6 @@ Global
 		{437DC4E8-B3B9-4EE8-8670-52B924E97F62} = {60986F0E-CA8B-49F9-BA87-417BA490DEE8}
 		{1978A7DF-1159-4B83-9EE5-753499579295} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 		{F52C2984-EBC9-4DBE-991B-CF7DA14A13A6} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
+		{F8ABB0CF-89F5-4F1B-B9EA-5C602A370EB4} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 	EndGlobalSection
 EndGlobal

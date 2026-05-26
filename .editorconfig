@@ -61,6 +61,10 @@ dotnet_style_coalesce_expression = true:warning
 # Kullanılmayan using → temizle (ImplicitUsings ile birlikte önemli)
 dotnet_diagnostic.IDE0005.severity = warning
 
+# CA1716: 'Error'/'Result' gibi adlar VB.NET anahtar kelimeleriyle çakışıyor. Bu solution
+# tamamen C# (cross-language tüketici yok) ve bu adlar Result pattern'da idiomatic → kapatıldı.
+dotnet_diagnostic.CA1716.severity = none
+
 #### C# kod stili ####
 # File-scoped namespace ZORUNLU (CLAUDE.md §9) → error
 csharp_style_namespace_declarations = file_scoped:error

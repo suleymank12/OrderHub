@@ -3,9 +3,7 @@
   <PropertyGroup>
     <AssemblyName>OrderHub.OrderService.Api</AssemblyName>
     <RootNamespace>OrderHub.OrderService.Api</RootNamespace>
-    <!-- Swagger XML için doc üret; TreatWarningsAsErrors ile CS1591 (missing doc) spam'ini tek yerde sustur. -->
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- GenerateDocumentationFile + NoWarn CS1591 artık kök Directory.Build.props'ta (global). -->
   </PropertyGroup>
 
   <ItemGroup>

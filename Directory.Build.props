@@ -19,6 +19,12 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
 
+    <!-- XML doc üretimi: IDE0005 (gereksiz using) gate'inin build'de çalışması için gerekli;
+         ayrıca Swagger + IntelliSense'e XML sağlar. CS1591 (her public üyeye doc zorunluluğu)
+         bastırılır — doc disiplini dosya bazında tutulur, analyzer zoruyla değil. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
     <!-- Reproducible restore + supply-chain: lock file zorunlu, CI lock dogrulamasi (locked mode). -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 
