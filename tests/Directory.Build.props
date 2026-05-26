@@ -27,10 +27,11 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- Tüm test projelerinde global using (ImplicitUsings ile). xunit template'inin
-       csproj'de sağladığı 'global using Xunit;' artık burada, ortak. -->
+  <!-- Tüm test projelerinde global using (ImplicitUsings ile). Xunit + FluentAssertions
+       her test projesinde kullanılıyor → ortak. (FA package ref'i projeye özel kalır, EK2.) -->
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
   </ItemGroup>
 
 </Project>

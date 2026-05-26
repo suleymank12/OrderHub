@@ -9,11 +9,10 @@
     <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.Common\OrderHub.Common.csproj" />
   </ItemGroup>
 
-  <!-- Ortak test paketleri (Test.Sdk/xunit/runner/coverlet) + Using Xunit → tests/Directory.Build.props.
-       Primitive'lerin dış sınırı yok → Moq/AutoFixture YOK; sadece FluentAssertions. -->
+  <!-- Ortak: Test.Sdk/xunit/runner/coverlet + Using Xunit/FluentAssertions → tests/Directory.Build.props.
+       Primitive'lerin dış sınırı yok → Moq/AutoFixture YOK; sadece FluentAssertions (projeye özel ref). -->
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
-    <Using Include="FluentAssertions" />
   </ItemGroup>
 
 </Project>

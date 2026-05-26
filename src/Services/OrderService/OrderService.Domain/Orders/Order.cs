@@ -1,0 +1,129 @@
+using OrderHub.Common.Primitives;
+using OrderHub.OrderService.Domain.Orders.Events;
+using OrderHub.OrderService.Domain.Orders.Exceptions;
+using OrderHub.OrderService.Domain.ValueObjects;
+
+namespace OrderHub.OrderService.Domain.Orders;
+
+/// <summary>
+/// Sipariş aggregate root'u. Kalemler yalnızca oluşturma anında verilir ve sonradan değişmez.
+/// Durum geçişleri behavior method'larıyla yapılır; her geçiş ilgili domain olayını yükseltir.
+/// </summary>
+public sealed class Order : AggregateRoot<Guid>
+{
+    private readonly List<OrderItem> _items = [];
+
+    private Order()
+    {
+    }
+
+    /// <summary>Müşteri kimliği.</summary>
+    public Guid CustomerId { get; private set; }
+
+    /// <summary>Sipariş kalemleri (salt-okunur).</summary>
+    public IReadOnlyList<OrderItem> Items => _items.AsReadOnly();
+
+    /// <summary>Mevcut durum.</summary>
+    public OrderStatus Status { get; private set; }
+
+    /// <summary>Toplam tutar; kalem ara toplamlarının toplamı (EF tarafından doldurulur).</summary>
+    public Money Total { get; private set; } = null!;
+
+    /// <summary>Teslimat adresi (EF tarafından doldurulur).</summary>
+    public Address ShippingAddress { get; private set; } = null!;
+
+    /// <summary>Oluşturulma zamanı (UTC).</summary>
+    public DateTime CreatedAtUtc { get; private set; }
+
+    /// <summary>Onaylanma zamanı (UTC); onaylanmadıysa null.</summary>
+    public DateTime? ConfirmedAtUtc { get; private set; }
+
+    /// <summary>İptal zamanı (UTC); iptal edilmediyse null.</summary>
+    public DateTime? CancelledAtUtc { get; private set; }
+
+    /// <summary>İptal gerekçesi; iptal edilmediyse null.</summary>
+    public string? CancellationReason { get; private set; }
+
+    /// <summary>
+    /// Yeni bir sipariş oluşturur (durum: Pending) ve <see cref="OrderCreated"/> yükseltir.
+    /// <paramref name="customerId"/> boş → <see cref="ArgumentException"/>;
+    /// <paramref name="items"/> boş → <see cref="EmptyOrderException"/>;
+    /// kalemler farklı currency içeriyorsa → <see cref="InvalidOperationException"/> (Money.Sum).
+    /// </summary>
+    public static Order Create(Guid customerId, Address shippingAddress, IEnumerable<OrderItem> items)
+    {
+        if (customerId == Guid.Empty)
+        {
+            throw new ArgumentException("Customer id cannot be empty.", nameof(customerId));
+        }
+
+        ArgumentNullException.ThrowIfNull(shippingAddress);
+        ArgumentNullException.ThrowIfNull(items);
+
+        var itemList = items.ToList();
+        if (itemList.Count == 0)
+        {
+            throw new EmptyOrderException();
+        }
+
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = customerId,
+            ShippingAddress = shippingAddress,
+            Status = OrderStatus.Pending,
+            CreatedAtUtc = DateTime.UtcNow,
+            Total = Money.Sum(itemList.Select(item => item.Subtotal))
+        };
+
+        order._items.AddRange(itemList);
+        order.RaiseDomainEvent(new OrderCreated(order.Id, customerId, order.Total));
+        return order;
+    }
+
+    /// <summary>
+    /// Siparişi onaylar (Pending → Confirmed) ve <see cref="OrderConfirmed"/> yükseltir.
+    /// Zaten onaylıysa → <see cref="OrderAlreadyConfirmedException"/>; Pending dışındaysa →
+    /// <see cref="InvalidOrderStatusTransitionException"/>.
+    /// </summary>
+    public void Confirm()
+    {
+        if (Status == OrderStatus.Confirmed)
+        {
+            throw new OrderAlreadyConfirmedException(Id);
+        }
+
+        if (Status != OrderStatus.Pending)
+        {
+            throw new InvalidOrderStatusTransitionException(Status, OrderStatus.Confirmed);
+        }
+
+        Status = OrderStatus.Confirmed;
+        ConfirmedAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new OrderConfirmed(Id));
+    }
+
+    /// <summary>
+    /// Siparişi iptal eder (yalnızca Pending/Confirmed) ve <see cref="OrderCancelled"/> yükseltir.
+    /// <paramref name="reason"/> boş → <see cref="ArgumentException"/>; iptal edilemez durumda
+    /// (Paid/Shipped/Cancelled) → <see cref="InvalidOrderStatusTransitionException"/>. Paid iptali
+    /// refund/compensation gerektirir → Faz 5 saga.
+    /// </summary>
+    public void Cancel(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("Cancellation reason cannot be empty.", nameof(reason));
+        }
+
+        if (Status is not (OrderStatus.Pending or OrderStatus.Confirmed))
+        {
+            throw new InvalidOrderStatusTransitionException(Status, OrderStatus.Cancelled);
+        }
+
+        Status = OrderStatus.Cancelled;
+        CancelledAtUtc = DateTime.UtcNow;
+        CancellationReason = reason.Trim();
+        RaiseDomainEvent(new OrderCancelled(Id, CancellationReason));
+    }
+}
