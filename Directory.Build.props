@@ -28,9 +28,12 @@
     <!-- Reproducible restore + supply-chain: lock file zorunlu, CI lock dogrulamasi (locked mode). -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 
-    <!-- Container slimming (ICU yükü kalkar). Money VO decimal+currency tutar,
-         kültüre bağlı domain logic YOK → güvenli. -->
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- InvariantGlobalization KASITLI OLARAK KAPALI (default false).
+         Faz 1.1'de "container slimming" için true yapılmıştı; ANCAK Microsoft.Data.SqlClient
+         (EF Core SQL Server provider) invariant mode'u DESTEKLEMEZ → bağlantı açarken
+         NotSupportedException fırlatır. Tüm servisler SQL Server kullandığından bu Api'yi
+         runtime'da (Faz 1.6 container'da) çökertirdi. Slimming kazancı zaten yoktu: tek
+         executable Api SQL'e bağlanmak için ICU'ya muhtaç. Integration testlerde yakalandı. -->
 
     <Deterministic>true</Deterministic>
   </PropertyGroup>

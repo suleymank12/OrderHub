@@ -9,8 +9,9 @@
     <IsTestProject>true</IsTestProject>
     <!-- Test projelerine özel, bilinçli analyzer gevşetmeleri:
          CA1707: test metod isimleri davranışı anlatmak için underscore içerir (Method_Scenario_Expected).
-         CA1822: stateless [Fact] metotları için "static yap" önerisi; test konvansiyonu instance metottur. -->
-    <NoWarn>$(NoWarn);CA1707;CA1822</NoWarn>
+         CA1822: stateless [Fact] metotları için "static yap" önerisi; test konvansiyonu instance metottur.
+         CA1711: xUnit collection-definition sınıfı idiomatik olarak '...Collection' ile biter (false-positive). -->
+    <NoWarn>$(NoWarn);CA1707;CA1822;CA1711</NoWarn>
   </PropertyGroup>
 
   <!-- Tüm test projelerinde ortak paketler (EK2). Projeye özel paketler csproj'lerde kalır. -->

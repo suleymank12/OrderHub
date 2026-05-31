@@ -134,3 +134,6 @@ generated_code = true
 
 [**/Migrations/*.cs]
 generated_code = true
+# IDE0005 build-mode'da generated_code'u onurlandırmıyor (Roslyn); EF migration/snapshot
+# ImplicitUsings ile gereksiz 'using System;' içerir → migration'lara dokunmadığımız için sustur.
+dotnet_diagnostic.IDE0005.severity = none
