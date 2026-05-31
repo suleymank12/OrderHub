@@ -14,6 +14,10 @@
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
     <PackageVersion Include="Mapster" Version="7.4.0" />
     <PackageVersion Include="Mapster.DependencyInjection" Version="1.0.1" />
+    <!-- ILogger ABSTRACTION'ı (sink değil). Application katmanı LoggingBehavior + handler'larda
+         yapısal log basar; Serilog sink Api katmanında. MediatR/FluentValidation bunu transitively
+         getirmiyor → açıkça pinliyoruz. -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
   </ItemGroup>
 
   <ItemGroup Label="EF Core (SQL Server)">

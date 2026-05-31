@@ -5,6 +5,12 @@
     <RootNamespace>OrderHub.OrderService.Application</RootNamespace>
   </PropertyGroup>
 
+  <!-- Handler/behavior'lar internal (§9 encapsulation); yalnızca unit test assembly'sine açılır.
+       Prod davranışı değişmez, public API yüzeyi genişlemez. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.OrderService.UnitTests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\OrderService.Domain\OrderHub.OrderService.Domain.csproj" />
   </ItemGroup>
@@ -16,6 +22,7 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Mapster" />
     <PackageReference Include="Mapster.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
 </Project>
