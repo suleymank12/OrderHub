@@ -6,6 +6,11 @@
     <!-- GenerateDocumentationFile + NoWarn CS1591 artık kök Directory.Build.props'ta (global). -->
   </PropertyGroup>
 
+  <!-- GlobalExceptionHandler vb. internal tipler yalnızca integration test assembly'sine açılır (§9). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.OrderService.IntegrationTests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\OrderService.Application\OrderHub.OrderService.Application.csproj" />
     <ProjectReference Include="..\OrderService.Infrastructure\OrderHub.OrderService.Infrastructure.csproj" />
