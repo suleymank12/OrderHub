@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.OrderService.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.OrderService.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\OrderService\OrderService.Api\OrderHub.OrderService.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\OrderService\OrderService.Infrastructure\OrderHub.OrderService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+</Project>

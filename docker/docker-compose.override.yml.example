@@ -1,0 +1,21 @@
+# OrderHub — local dev port mapping ŞABLONU (committed).
+# Bu dosyayı .override.yml olarak kopyala (o gitignored, K3):
+#   cp docker/docker-compose.override.yml.example docker/docker-compose.override.yml
+#
+# Ana docker-compose.yml'de bilinçli olarak published port YOKTUR (K3 — servisler
+# yalnızca 'orderhub' bridge ağında konuşur). Host'tan erişim SADECE bu override ile
+# açılır; böylece prod-benzeri ana compose dosyası dışa kapalı kalır.
+# "host:container" — host portunu çakışmaya göre serbestçe değiştir.
+
+services:
+  sqlserver:
+    ports:
+      - "1433:1433" # SSMS / Azure Data Studio ile bağlan
+
+  seq:
+    ports:
+      - "8081:80" # Seq UI → http://localhost:8081 (container içi 80)
+
+  orderservice:
+    ports:
+      - "8080:8080" # Swagger → http://localhost:8080/swagger (container içi 8080)

@@ -1,0 +1,52 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Transitive paketleri de merkezi versiyona sabitler → diamond dependency sürprizlerini keser. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="CQRS / Validation / Mapping">
+    <!-- MediatR 12.x son ÜCRETSIZ (Apache-2.0) hat; v13+ ticari lisans. Sabit pin → yanlışlıkla 13'e sıçramayız. -->
+    <PackageVersion Include="MediatR" Version="12.4.1" />
+    <!-- FluentValidation 11.x son ücretsiz hat; v12+ ticari. -->
+    <PackageVersion Include="FluentValidation" Version="11.11.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <PackageVersion Include="Mapster" Version="7.4.0" />
+    <PackageVersion Include="Mapster.DependencyInjection" Version="1.0.1" />
+    <!-- ILogger ABSTRACTION'ı (sink değil). Application katmanı LoggingBehavior + handler'larda
+         yapısal log basar; Serilog sink Api katmanında. MediatR/FluentValidation bunu transitively
+         getirmiyor → açıkça pinliyoruz. -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup Label="EF Core (SQL Server)">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11" />
+  </ItemGroup>
+
+  <ItemGroup Label="API / Auth / Logging / Health">
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageVersion Include="AspNetCore.HealthChecks.SqlServer" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test (ortak + projeye özel)">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- Moq 4.20.0-4.20.1 SponsorLink ile git e-postası topluyordu (4.20.2'de kaldırıldı); 4.20.72 temiz. -->
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <!-- FluentAssertions 7.0.0: son Apache-2.0 (ücretsiz) sürüm. v8+ Xceed Community License → ticari kullanımda ücretli. -->
+    <PackageVersion Include="FluentAssertions" Version="7.0.0" />
+    <PackageVersion Include="AutoFixture" Version="4.18.1" />
+    <PackageVersion Include="AutoFixture.AutoMoq" Version="4.18.1" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+  </ItemGroup>
+
+</Project>

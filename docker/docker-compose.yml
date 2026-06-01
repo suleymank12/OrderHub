@@ -1,0 +1,63 @@
+# OrderHub — Faz 1 local stack. Çalıştırma: `cd docker && docker compose up -d`
+# Ana compose'da published port YOK (K3 — internal). Host erişimi docker-compose.override.yml'de (dev).
+# Build context repo kökü (..); Dockerfile servisle co-located.
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU13-ubuntu-22.04 # pinned (latest yasak, K2)
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD} # .env'den; repo'da plaintext yok (K3)
+      MSSQL_PID: Developer
+    volumes:
+      - sql-data:/var/opt/mssql # stateful → volume zorunlu (yoksa veri kaybı)
+    healthcheck:
+      # Bu image ODBC 17 tools içerir (/opt/mssql-tools, tools18 değil); default encrypt yok → -C gereksiz.
+      # $$ = container shell'inde $ olarak genişlesin (compose substitution değil).
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s # SQL Server soğuk start'ı yavaş
+    restart: unless-stopped # uzun ömürlü infra
+    networks:
+      - orderhub
+
+  seq:
+    image: datalust/seq:2024.3 # pinned
+    environment:
+      ACCEPT_EULA: "Y"
+    volumes:
+      - seq-data:/data
+    restart: unless-stopped
+    networks:
+      - orderhub
+
+  orderservice:
+    build:
+      context: .. # repo kökü
+      dockerfile: src/Services/OrderService/OrderService.Api/Dockerfile
+    environment:
+      # ADR-0001: local dev stack Development'ta çalışır (Swagger + dev token + startup migration).
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Order;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      JwtSettings__Secret: ${JWT_SECRET} # .env'den
+      # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+    depends_on:
+      sqlserver:
+        condition: service_healthy # şema migration'ı için DB hazır olmalı
+      seq:
+        condition: service_started
+    # restart YOK: startup/migration hatası restart loop'unda gizlenmesin (görünür kalsın).
+    networks:
+      - orderhub
+
+networks:
+  orderhub:
+    driver: bridge
+
+volumes:
+  sql-data:
+  seq-data:

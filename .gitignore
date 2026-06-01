@@ -1,0 +1,61 @@
+﻿# ======================================================================
+# OrderHub — .gitignore
+# ======================================================================
+
+# --- Build çıktıları ---
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+*.dll
+*.exe
+*.pdb
+
+# --- Visual Studio / Rider / VS Code ---
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*_i.c
+*_p.c
+
+# --- Test & coverage çıktıları ---
+[Tt]est[Rr]esults/
+coverage/
+*.coverage
+*.coverview
+*.cobertura.xml
+*.opencover.xml
+TestResults*.trx
+
+# --- Secrets (CLAUDE.md K3) — gerçek değerler ASLA repoda ---
+# şablon dosya commit'lenir (trailing inline comment .gitignore'da DESTEKLENMEZ — kendi satırında)
+.env
+*.env
+!.env.example
+# Docker compose dev override (ROADMAP 1.6) — root + docker/ alt-dizini
+docker-compose.override.yml
+docker/docker-compose.override.yml
+appsettings.*.local.json
+*.pfx
+*.key
+secrets.json
+
+# --- Loglar & geçici ---
+*.log
+logs/
+*.tmp
+*.bak
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# ======================================================================
+# DİKKAT: packages.lock.json İGNORE EDİLMEZ.
+# RestorePackagesWithLockFile=true ile üretilir; reproducible restore ve
+# CI --locked-mode (supply-chain) için repoya commit edilir.
+# ======================================================================
