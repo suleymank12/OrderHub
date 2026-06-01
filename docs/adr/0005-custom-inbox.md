@@ -53,7 +53,7 @@ commit eder. Filter ve handler MassTransit consume-scope'unda **aynı scoped DbC
 
 ### Karar 4 — Varlık = işlendi (ProcessedOnUtc ara durumu YOK)
 
-`InboxMessage` satırının **commit edilmiş varlığı** = "bu (MessageId, ConsumerType) tam olarak işlendi".
+`InboxMessage` satırının **commit edilmiş varlığı** = "bu (MessageId, MessageType) tam olarak işlendi".
 Ayrı bir `ProcessedOnUtc` (received-ama-işlenmedi) ara durumu **yoktur**; yalnızca audit için `ReceivedOnUtc`.
 
 - **Gerekçe:** "Consume başında received işaretle, sonunda processed işaretle" iki-aşamalı yaklaşımda
@@ -64,19 +64,28 @@ Ayrı bir `ProcessedOnUtc` (received-ama-işlenmedi) ara durumu **yoktur**; yaln
 ### Karar 5 — Concurrency = check-then-add + unique index (composite PK) backstop
 
 Filter önce var mı kontrol eder (yoksa Add). İki worker aynı mesajı aynı anda alırsa ikisi de "yok" görüp
-Add eder → **composite PK (MessageId, ConsumerType)** SaveChanges'te birini reddeder (unique ihlali) → o
+Add eder → **composite PK (MessageId, MessageType)** SaveChanges'te birini reddeder (unique ihlali) → o
 consume fault → MassTransit retry → artık satır var → skip. Index = kesin backstop.
 
-- **Composite PK seçimi (ayrı surrogate PK + unique index yerine):** `(MessageId, ConsumerType)` çifti zaten
+- **Composite PK seçimi (ayrı surrogate PK + unique index yerine):** `(MessageId, MessageType)` çifti zaten
   doğal kimliktir; composite PK hem benzersizliği hem varlık-sorgusunun (clustered index seek) ihtiyacını
   tek yapıyla karşılar → surrogate kolon YAGNI.
 
-### Karar 6 — Consume filter (transparent)
+### Karar 6 — Consume filter (transparent, message-level)
 
-Dedup, her consumer'a şeffaf bir **MassTransit consume filter** (`InboxConsumeFilter<TConsumer, TMessage>`)
-ile uygulanır; consumer base class veya her consumer'da explicit kod DEĞİL. Per-consumer dedup için
-consumer-level context kullanılır (`ConsumerType = typeof(TConsumer).Name`) → aynı mesaj farklı consumer'larca
-işlenebilir.
+Dedup, şeffaf bir **MassTransit consume filter** (`InboxConsumeFilter<TMessage>`) ile uygulanır; consumer base
+class veya her consumer'da explicit kod DEĞİL. **Message-level** (`IFilter<ConsumeContext<TMessage>>`, tek
+generic parametre) seçildi: MassTransit'in scoped open-generic kayıt yardımcısı
+`UseConsumeFilter(typeof(InboxConsumeFilter<>), context)` yalnızca message-level'ı destekler (consumer-level
+iki-parametreli `ConsumerConsumeContext<,>` için temiz bir mekanizma yoktur). Discriminator = **mesaj tipinin
+FullName'i** (`MessageType`), consumer tipi değil.
+
+- **1:1 topoloji gerekçesi:** Mevcut sistemde her integration event tipi tam olarak **bir** consumer'a gider
+  (database-per-service, ConfigureEndpoints convention) → `(evt.Id, MessageType)` dedup'ı bu topolojide
+  per-consumer ile fonksiyonel eşdeğerdir; ayrıca `evt.Id` zaten global benzersizdir (kaynak EventId).
+- **Sınır (dürüst not):** Aynı mesaj tipi ileride **birden çok** consumer'a giderse message-level filter onları
+  ayırt edemez (ikisi aynı anahtara yarışır → biri yanlışça skip). O senaryoda consumer-level filter'a geçilir
+  (ayrı karar). Şu an YAGNI.
 
 ## Consequences
 

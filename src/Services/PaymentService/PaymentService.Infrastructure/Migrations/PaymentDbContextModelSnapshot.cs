@@ -27,14 +27,14 @@ namespace OrderHub.PaymentService.Infrastructure.Migrations
                     b.Property<Guid>("MessageId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ConsumerType")
+                    b.Property<string>("MessageType")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("ReceivedOnUtc")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("MessageId", "ConsumerType");
+                    b.HasKey("MessageId", "MessageType");
 
                     b.ToTable("InboxMessages", (string)null);
                 });

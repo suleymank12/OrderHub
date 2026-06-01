@@ -12,7 +12,7 @@ using OrderHub.OrderService.Infrastructure.Persistence;
 namespace OrderHub.OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20260601221851_AddInboxMessages")]
+    [Migration("20260601225346_AddInboxMessages")]
     partial class AddInboxMessages
     {
         /// <inheritdoc />
@@ -30,14 +30,14 @@ namespace OrderHub.OrderService.Infrastructure.Migrations
                     b.Property<Guid>("MessageId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ConsumerType")
+                    b.Property<string>("MessageType")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("ReceivedOnUtc")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("MessageId", "ConsumerType");
+                    b.HasKey("MessageId", "MessageType");
 
                     b.ToTable("InboxMessages", (string)null);
                 });

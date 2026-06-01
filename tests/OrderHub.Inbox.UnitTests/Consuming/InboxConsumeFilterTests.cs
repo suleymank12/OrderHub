@@ -9,31 +9,29 @@ using OrderHub.Inbox.Persistence;
 namespace OrderHub.Inbox.UnitTests.Consuming;
 
 /// <summary>
-/// <see cref="InboxConsumeFilter{TConsumer,TMessage}"/> dedup mantığı (ADR-0005). Hafif InMemory
+/// <see cref="InboxConsumeFilter{TMessage}"/> dedup mantığı (ADR-0005, message-level). Hafif InMemory
 /// <see cref="IInboxDbContext"/> ile: duplicate → consumer (next) çağrılmaz; yeni → InboxMessage tracked
 /// Add + next çağrılır (SaveChanges consumer'ın TransactionBehavior'ında — burada ChangeTracker ile doğrulanır).
 /// </summary>
 public sealed class InboxConsumeFilterTests
 {
-    private static readonly string ConsumerTypeName = nameof(TestConsumer);
+    private static readonly string MessageTypeName = typeof(TestIntegrationEvent).FullName!;
 
     [Fact]
     public async Task Send_AlreadyProcessedMessage_DoesNotCallNext()
     {
         await using var dbContext = NewInMemoryDbContext();
         var messageId = Guid.NewGuid();
-        dbContext.InboxMessages.Add(InboxMessage.Create(messageId, ConsumerTypeName));
+        dbContext.InboxMessages.Add(InboxMessage.Create(messageId, MessageTypeName));
         await dbContext.SaveChangesAsync();
 
-        var next = new Mock<IPipe<ConsumerConsumeContext<TestConsumer, TestIntegrationEvent>>>();
+        var next = new Mock<IPipe<ConsumeContext<TestIntegrationEvent>>>();
         var filter = NewFilter(dbContext);
 
         await filter.Send(ConsumeContext(messageId), next.Object);
 
         // Dedup: consumer pipeline'ı hiç çalışmaz.
-        next.Verify(
-            pipe => pipe.Send(It.IsAny<ConsumerConsumeContext<TestConsumer, TestIntegrationEvent>>()),
-            Times.Never);
+        next.Verify(pipe => pipe.Send(It.IsAny<ConsumeContext<TestIntegrationEvent>>()), Times.Never);
     }
 
     [Fact]
@@ -42,8 +40,8 @@ public sealed class InboxConsumeFilterTests
         await using var dbContext = NewInMemoryDbContext();
         var messageId = Guid.NewGuid();
 
-        var next = new Mock<IPipe<ConsumerConsumeContext<TestConsumer, TestIntegrationEvent>>>();
-        next.Setup(pipe => pipe.Send(It.IsAny<ConsumerConsumeContext<TestConsumer, TestIntegrationEvent>>()))
+        var next = new Mock<IPipe<ConsumeContext<TestIntegrationEvent>>>();
+        next.Setup(pipe => pipe.Send(It.IsAny<ConsumeContext<TestIntegrationEvent>>()))
             .Returns(Task.CompletedTask);
         var filter = NewFilter(dbContext);
 
@@ -58,15 +56,15 @@ public sealed class InboxConsumeFilterTests
         dbContext.ChangeTracker.Entries<InboxMessage>().Should().ContainSingle(entry =>
             entry.State == EntityState.Added &&
             entry.Entity.MessageId == messageId &&
-            entry.Entity.ConsumerType == ConsumerTypeName);
+            entry.Entity.MessageType == MessageTypeName);
     }
 
-    private static InboxConsumeFilter<TestConsumer, TestIntegrationEvent> NewFilter(IInboxDbContext dbContext) =>
-        new(dbContext, NullLogger<InboxConsumeFilter<TestConsumer, TestIntegrationEvent>>.Instance);
+    private static InboxConsumeFilter<TestIntegrationEvent> NewFilter(IInboxDbContext dbContext) =>
+        new(dbContext, NullLogger<InboxConsumeFilter<TestIntegrationEvent>>.Instance);
 
-    private static ConsumerConsumeContext<TestConsumer, TestIntegrationEvent> ConsumeContext(Guid messageId)
+    private static ConsumeContext<TestIntegrationEvent> ConsumeContext(Guid messageId)
     {
-        var mock = new Mock<ConsumerConsumeContext<TestConsumer, TestIntegrationEvent>>();
+        var mock = new Mock<ConsumeContext<TestIntegrationEvent>>();
         mock.Setup(context => context.Message)
             .Returns(new TestIntegrationEvent { Id = messageId, OccurredOnUtc = DateTime.UtcNow });
         mock.Setup(context => context.CancellationToken).Returns(CancellationToken.None);
@@ -78,10 +76,6 @@ public sealed class InboxConsumeFilterTests
             .UseInMemoryDatabase($"inbox-{Guid.NewGuid()}")
             .Options);
 }
-
-/// <summary>Dedup ayrımı için marker consumer tipi (yalnız <c>typeof(TConsumer).Name</c> için).
-/// Moq generic mock proxy'si erişebilsin diye public.</summary>
-public sealed class TestConsumer;
 
 /// <summary>Test integration event'i — filter dedup anahtarını <see cref="IIntegrationEvent.Id"/>'den alır.
 /// Moq generic mock proxy'si erişebilsin diye public.</summary>

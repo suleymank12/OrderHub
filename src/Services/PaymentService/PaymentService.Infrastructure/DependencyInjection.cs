@@ -1,8 +1,11 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderHub.Contracts.Payments;
 using OrderHub.EventBus.RabbitMq;
+using OrderHub.Inbox;
+using OrderHub.Inbox.Consuming;
 using OrderHub.Outbox;
 using OrderHub.PaymentService.Application.Abstractions.Persistence;
 using OrderHub.PaymentService.Domain.Payments.Events;
@@ -61,16 +64,19 @@ public static class DependencyInjection
                 // Pre-commit outbox interceptor (SavingChanges) — domain olayını yalnız OKUR, clear etmez.
                 .AddOutboxInterceptor(serviceProvider));
 
-        // Outbox processor port'u → PaymentDbContext (internal olduğundan bu kayıt Infrastructure'da olmalı).
+        // Outbox processor + inbox dedup port'ları → PaymentDbContext (internal → kayıt Infrastructure'da).
+        // İkisi de AYNI scope'ta aynı PaymentDbContext → inbox filter Add + handler SaveChanges atomik (ADR-0005 Karar 3).
         services.AddScoped<IOutboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<PaymentDbContext>());
+        services.AddScoped<IInboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<PaymentDbContext>());
+        services.AddInbox();
 
-        // Transport (RabbitMQ, ADR-0004) + ProcessPayment consumer + outbox processor. RabbitMQ ayarları
-        // config'ten (secret env'den, K3). Consumer ProcessPaymentIntegrationEvent'i tüketir; testte
-        // ApiTestFactory yok → adanmış in-memory harness consumer'ı kendi kaydeder.
+        // Transport (RabbitMQ, ADR-0004) + ProcessPayment consumer + inbox dedup filter + outbox processor.
+        // Inbox filter (consume-pipe) consumer'dan önce duplicate'leri keser (ADR-0005). RabbitMQ ayarları config'ten (K3).
         var rabbitMqOptions = configuration.GetSection(RabbitMqSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
         services.AddRabbitMqEventBus(
             rabbitMqOptions,
-            busConfigurator => busConfigurator.AddConsumer<ProcessPaymentIntegrationEventConsumer>());
+            busConfigurator => busConfigurator.AddConsumer<ProcessPaymentIntegrationEventConsumer>(),
+            (rabbit, context) => rabbit.UseConsumeFilter(typeof(InboxConsumeFilter<>), context));
         services.AddOutboxProcessor();
 
         services.AddScoped<IPaymentRepository, PaymentRepository>();

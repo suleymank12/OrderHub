@@ -16,12 +16,12 @@ namespace OrderHub.OrderService.Infrastructure.Migrations
                 columns: table => new
                 {
                     MessageId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ConsumerType = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    MessageType = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     ReceivedOnUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_InboxMessages", x => new { x.MessageId, x.ConsumerType });
+                    table.PrimaryKey("PK_InboxMessages", x => new { x.MessageId, x.MessageType });
                 });
         }
 

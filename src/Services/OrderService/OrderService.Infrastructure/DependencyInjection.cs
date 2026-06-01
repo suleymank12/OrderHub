@@ -1,7 +1,10 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderHub.Contracts.Payments;
+using OrderHub.Inbox;
+using OrderHub.Inbox.Consuming;
 using OrderHub.OrderService.Application.Abstractions.Persistence;
 using OrderHub.OrderService.Application.Abstractions.Scheduling;
 using OrderHub.OrderService.Application.Orders.BackgroundJobs;
@@ -65,19 +68,25 @@ public static class DependencyInjection
                 .AddOutboxInterceptor(serviceProvider)
                 .AddInterceptors(serviceProvider.GetRequiredService<DispatchDomainEventsInterceptor>()));
 
-        // Outbox processor port'u → OrderDbContext (internal olduğundan bu kayıt Infrastructure'da olmalı).
-        // Processor (aşağıda) bu port üzerinden işlenmemiş satırları okur.
+        // Outbox processor + inbox dedup port'ları → OrderDbContext (internal olduğundan kayıt Infrastructure'da).
+        // İkisi de AYNI scope'ta aynı OrderDbContext instance'ı → inbox filter Add eder, handler aynı instance'ta
+        // SaveChanges yapar → atomik (ADR-0005 Karar 3). IOutboxDbContext pattern'iyle birebir.
         services.AddScoped<IOutboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<OrderDbContext>());
+        services.AddScoped<IInboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<OrderDbContext>());
+        services.AddInbox();
 
-        // Transport (RabbitMQ, ADR-0004) + payment-sonucu consumer'ları + outbox processor. RabbitMQ ayarları
-        // config'ten (secret env'den, K3 — appsettings placeholder). Consumer'lar PaymentSucceeded/Failed'ı
-        // tüketir; testte adanmış in-memory harness consumer'ları kendi kaydeder (ApiTestFactory'ye dokunulmaz).
+        // Transport (RabbitMQ, ADR-0004) + payment-sonucu consumer'ları + inbox dedup filter + outbox processor.
+        // Consumer'lar PaymentSucceeded/Failed'ı tüketir; inbox filter (consume-pipe) consumer'lardan önce
+        // duplicate'leri keser (ADR-0005). RabbitMQ ayarları config'ten (secret env'den, K3).
         var rabbitMqOptions = configuration.GetSection(RabbitMqSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
-        services.AddRabbitMqEventBus(rabbitMqOptions, busConfigurator =>
-        {
-            busConfigurator.AddConsumer<PaymentSucceededIntegrationEventConsumer>();
-            busConfigurator.AddConsumer<PaymentFailedIntegrationEventConsumer>();
-        });
+        services.AddRabbitMqEventBus(
+            rabbitMqOptions,
+            busConfigurator =>
+            {
+                busConfigurator.AddConsumer<PaymentSucceededIntegrationEventConsumer>();
+                busConfigurator.AddConsumer<PaymentFailedIntegrationEventConsumer>();
+            },
+            (rabbit, context) => rabbit.UseConsumeFilter(typeof(InboxConsumeFilter<>), context));
         services.AddOutboxProcessor();
 
         services.AddScoped<IOrderRepository, OrderRepository>();

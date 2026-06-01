@@ -9,6 +9,6 @@ namespace OrderHub.Inbox.Consuming;
 internal static partial class InboxLog
 {
     [LoggerMessage(EventId = 6000, Level = LogLevel.Debug,
-        Message = "Inbox duplicate skipped: message {MessageId} already processed by {ConsumerType}")]
-    public static partial void DuplicateSkipped(ILogger logger, Guid messageId, string consumerType);
+        Message = "Inbox duplicate skipped: message {MessageId} of type {MessageType} already processed")]
+    public static partial void DuplicateSkipped(ILogger logger, Guid messageId, string messageType);
 }

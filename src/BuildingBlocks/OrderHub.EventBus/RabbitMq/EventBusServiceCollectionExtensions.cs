@@ -10,11 +10,17 @@ namespace OrderHub.EventBus.RabbitMq;
 /// </summary>
 public static class EventBusServiceCollectionExtensions
 {
-    /// <summary>RabbitMQ üzerinde MassTransit bus'ını ve integration event publisher'ını kaydeder.</summary>
+    /// <summary>
+    /// RabbitMQ üzerinde MassTransit bus'ını ve integration event publisher'ını kaydeder. Consumer/saga
+    /// kayıtları <paramref name="configureBus"/> ile; consume-pipe filter'ları (ör. inbox dedup)
+    /// <paramref name="configureConsumePipe"/> ile — <c>ConfigureEndpoints</c>'ten ÖNCE uygulanır ki tüm
+    /// endpoint'lere bağlansın. Building block hangi filter/consumer olduğunu bilmez (DIP).
+    /// </summary>
     public static IServiceCollection AddRabbitMqEventBus(
         this IServiceCollection services,
         RabbitMqOptions options,
-        Action<IBusRegistrationConfigurator>? configureBus = null)
+        Action<IBusRegistrationConfigurator>? configureBus = null,
+        Action<IRabbitMqBusFactoryConfigurator, IBusRegistrationContext>? configureConsumePipe = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(options);
@@ -31,6 +37,9 @@ public static class EventBusServiceCollectionExtensions
                     host.Username(options.Username);
                     host.Password(options.Password);
                 });
+
+                // Consume-pipe filter'ları (inbox dedup vb.) endpoint'lerden ÖNCE → tüm consumer'lara uygulanır.
+                configureConsumePipe?.Invoke(rabbit, context);
 
                 // Kayıtlı consumer endpoint'lerini convention ile bağlar (sade topology).
                 rabbit.ConfigureEndpoints(context);
