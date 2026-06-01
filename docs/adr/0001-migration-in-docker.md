@@ -68,6 +68,6 @@ ve `depends_on` ile SQL Server'ın **healthy** olmasını bekler.
 
 ## İlgili
 
-- [CLAUDE.md](../../CLAUDE.md) §9 (prod-safe migration), §3 (secret/güvenlik)
+- [CLAUDE.md](../../CLAUDE.md) §9 (prod-safe migration), §2 (K3 — secret/güvenlik)
 - [ROADMAP.md](../../ROADMAP.md) §1.6 (Docker), §1.8 (kabul kriteri), §7 (CI/CD)
 - İleride: ADR (Production migration / CI-CD bundle stratejisi) — Faz 7'de yazılacak
