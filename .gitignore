@@ -32,9 +32,10 @@ coverage/
 TestResults*.trx
 
 # --- Secrets (CLAUDE.md K3) — gerçek değerler ASLA repoda ---
+# şablon dosya commit'lenir (trailing inline comment .gitignore'da DESTEKLENMEZ — kendi satırında)
 .env
 *.env
-!.env.example                       # şablon dosya commit'lenir
+!.env.example
 # Docker compose dev override (ROADMAP 1.6) — root + docker/ alt-dizini
 docker-compose.override.yml
 docker/docker-compose.override.yml
