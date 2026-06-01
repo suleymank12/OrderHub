@@ -1,4 +1,4 @@
-# ======================================================================
+﻿# ======================================================================
 # OrderHub — .gitignore
 # ======================================================================
 
@@ -35,7 +35,9 @@ TestResults*.trx
 .env
 *.env
 !.env.example                       # şablon dosya commit'lenir
-docker-compose.override.yml         # local dev port mapping (ROADMAP 1.6)
+# Docker compose dev override (ROADMAP 1.6) — root + docker/ alt-dizini
+docker-compose.override.yml
+docker/docker-compose.override.yml
 appsettings.*.local.json
 *.pfx
 *.key

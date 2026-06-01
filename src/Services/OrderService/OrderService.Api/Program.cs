@@ -5,6 +5,7 @@ using OrderHub.OrderService.Api.Extensions;
 using OrderHub.OrderService.Api.Identity;
 using OrderHub.OrderService.Application;
 using OrderHub.OrderService.Infrastructure;
+using OrderHub.OrderService.Infrastructure.Persistence;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger configuration okunmadan önceki (DI/startup) hatalarını da yakalar.
@@ -62,6 +63,15 @@ try
             })
             .AllowAnonymous()
             .WithTags("Dev");
+    }
+
+    // ADR-0001 (Seçenek B): yalnızca Development'ta startup'ta migration uygula → "docker-compose up"
+    // tek komutla çalışsın. Production'da otomatik migration YOK (§9 prod-safe). Migration patlarsa
+    // app ayağa kalkmaz (fail-fast → outer catch → container exit; şema yoksa zaten çalışamaz).
+    if (app.Environment.IsDevelopment())
+    {
+        Log.Information("Applying database migrations (Development)...");
+        await app.Services.ApplyMigrationsAsync();
     }
 
     app.Run();

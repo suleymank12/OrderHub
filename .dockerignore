@@ -1,0 +1,30 @@
+# Build context'ini küçült + secret/artefakt sızıntısını engelle (image'a girmesin).
+
+# Secrets — .env HİÇBİR seviyede context'e/image'a girmez (.env.example HARİÇ).
+**/.env
+**/*.env
+!**/.env.example
+
+# Build çıktıları (image kendi publish'ini üretir).
+**/bin
+**/obj
+
+# VCS + IDE
+.git
+.gitignore
+**/.vs
+**/.idea
+*.user
+*.suo
+
+# Log'lar
+logs
+**/logs
+
+# Test kodu container'a sızmasın (runtime image'da test yok).
+tests
+
+# Docs / compose (image'a gerekmez)
+docs
+docker
+**/*.md
