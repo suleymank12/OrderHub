@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.PaymentService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.PaymentService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- DbContext/Repository internal (§9); yalnızca integration test assembly'sine açılır (3c'de gelecek). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.PaymentService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PaymentService.Application\OrderHub.PaymentService.Application.csproj" />
+    <!-- Outbox writer: OutboxInterceptor + IOutboxDbContext + OutboxMessage(Configuration).
+         Integration event mapping (registry) 3c'de eklenecek → Contracts ref de o zaman. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: sadece migration üretimi için; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.PaymentService.Application</AssemblyName>
+    <RootNamespace>OrderHub.PaymentService.Application</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Handler/behavior'lar internal (§9); yalnızca test ve Infrastructure'a açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.PaymentService.UnitTests" />
+    <InternalsVisibleTo Include="OrderHub.PaymentService.Infrastructure" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PaymentService.Domain\OrderHub.PaymentService.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- Versiyonlar kök Directory.Packages.props'ta (CPM). -->
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Mapster" />
+    <PackageReference Include="Mapster.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.PaymentService.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.PaymentService.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\PaymentService\PaymentService.Domain\OrderHub.PaymentService.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Services\PaymentService\PaymentService.Application\OrderHub.PaymentService.Application.csproj" />
+  </ItemGroup>
+
+  <!-- IsTestProject / Test.Sdk / xunit / runner / coverlet + Using Xunit/FluentAssertions
+       → tests/Directory.Build.props (ortak). Burada sadece projeye özel paketler. -->
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="AutoFixture" />
+    <PackageReference Include="AutoFixture.AutoMoq" />
+  </ItemGroup>
+
+</Project>
