@@ -7,6 +7,7 @@ using OrderHub.OrderService.Application.Abstractions.Scheduling;
 using OrderHub.OrderService.Application.Orders.BackgroundJobs;
 using OrderHub.OrderService.Domain.Orders.Events;
 using OrderHub.OrderService.Infrastructure.BackgroundJobs;
+using OrderHub.OrderService.Infrastructure.Messaging;
 using OrderHub.OrderService.Infrastructure.Persistence;
 using OrderHub.OrderService.Infrastructure.Persistence.Interceptors;
 using OrderHub.OrderService.Infrastructure.Persistence.Repositories;
@@ -68,11 +69,15 @@ public static class DependencyInjection
         // Processor (aşağıda) bu port üzerinden işlenmemiş satırları okur.
         services.AddScoped<IOutboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<OrderDbContext>());
 
-        // Transport (RabbitMQ, ADR-0004) + outbox processor: yazılan outbox satırlarını polling ile publish eder.
-        // RabbitMQ ayarları config'ten (secret env'den, K3 — appsettings placeholder). Testte ApiTestFactory
-        // bu MassTransit kaydını in-memory test harness'e çevirir → broker'a hiç bağlanılmaz.
+        // Transport (RabbitMQ, ADR-0004) + payment-sonucu consumer'ları + outbox processor. RabbitMQ ayarları
+        // config'ten (secret env'den, K3 — appsettings placeholder). Consumer'lar PaymentSucceeded/Failed'ı
+        // tüketir; testte adanmış in-memory harness consumer'ları kendi kaydeder (ApiTestFactory'ye dokunulmaz).
         var rabbitMqOptions = configuration.GetSection(RabbitMqSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
-        services.AddRabbitMqEventBus(rabbitMqOptions);
+        services.AddRabbitMqEventBus(rabbitMqOptions, busConfigurator =>
+        {
+            busConfigurator.AddConsumer<PaymentSucceededIntegrationEventConsumer>();
+            busConfigurator.AddConsumer<PaymentFailedIntegrationEventConsumer>();
+        });
         services.AddOutboxProcessor();
 
         services.AddScoped<IOrderRepository, OrderRepository>();

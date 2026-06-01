@@ -29,6 +29,9 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <!-- RabbitMqOptions'ı config'ten bağlamak için ConfigurationBinder.Get<T>(). -->
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <!-- Consumer'lar ISender ile MediatR'a delege eder ve ValidationException (poison) yakalar → doğrudan kullanım. -->
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <!-- Design: sadece migration üretimi için; downstream'e (Api) sızmasın. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
