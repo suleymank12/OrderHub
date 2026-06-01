@@ -56,4 +56,20 @@ internal static partial class ApplicationLog
     [LoggerMessage(EventId = 2007, Level = LogLevel.Information,
         Message = "Low-stock alert skipped: InventoryService not integrated yet (Faz 5)")]
     public static partial void LowStockAlertSkipped(ILogger logger);
+
+    [LoggerMessage(EventId = 2008, Level = LogLevel.Information,
+        Message = "Order {OrderId} marked paid")]
+    public static partial void OrderMarkedPaid(ILogger logger, Guid orderId);
+
+    [LoggerMessage(EventId = 2009, Level = LogLevel.Debug,
+        Message = "Mark-paid skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
+    public static partial void OrderMarkPaidSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
+
+    [LoggerMessage(EventId = 2010, Level = LogLevel.Information,
+        Message = "Order {OrderId} cancelled by payment failure")]
+    public static partial void OrderCancelledByPaymentFailure(ILogger logger, Guid orderId);
+
+    [LoggerMessage(EventId = 2011, Level = LogLevel.Debug,
+        Message = "Payment-failure cancellation skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
+    public static partial void OrderPaymentFailureSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
 }

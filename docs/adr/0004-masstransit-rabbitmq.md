@@ -93,6 +93,26 @@ CLAUDE.md §3 `Newtonsoft.Json`'u yasaklar. **MassTransit 8 varsayılan serializ
 - **Evrim:** Faz 4'te event-stream Kafka'ya gider; RabbitMQ command-only kalır. Faz 6'da MassTransit
   OpenTelemetry instrumentation eklenir (ROADMAP §6.3).
 
+## Implementation Note — Publish vs Send Topology (3c)
+
+- **Eklendi:** 2026-06-01 (Faz 3 Adım 3c).
+
+ADR Karar 2, command akışı için **direct/point-to-point** intent'i belirtti. 3c implementasyonu, outbox
+processor'ın `IIntegrationEventPublisher.PublishAsync` → MassTransit **`Publish`** kullanması nedeniyle
+mesajı **message-type exchange**'ine (pub-sub semantiği) gönderir; consumer'lar `ConfigureEndpoints`
+convention'ı ile otomatik queue'ya bağlanır.
+
+- **Neden de facto point-to-point:** Her integration event'in **tek** bir tüketici servisi vardır
+  (`ProcessPaymentIntegrationEvent` → yalnız PaymentService; `PaymentSucceeded/Failed` → yalnız OrderService).
+  Tek consumer + tek queue → mesaj tek hedefe gider; davranışsal olarak point-to-point.
+- **Neden `Send` değil:** Strict direct-routing (gerçek `Send` + explicit endpoint adresi) outbox
+  publisher'ının her mesaj tipi için hedef endpoint adresini bilmesini gerektirir → producer'a topology
+  bilgisi sızdırır, ekstra konfigürasyon. Tek tüketici varken kazanç yok (**YAGNI**).
+- **Bilinçli sadeleştirme, sessiz drift değil:** `Publish`+convention seçimi burada kayda geçirildi. Birden
+  çok bağımsız tüketici (audit, analytics) gerektiğinde `Publish`'in pub-sub'ı zaten doğru araçtır; gerçek
+  command-only direct-routing gerekirse (örn. competing-consumer load balancing dışı bir neden) ayrı bir
+  karar olarak revize edilir. Faz 4'te event-stream zaten Kafka'ya gider (RabbitMQ command-only kalır).
+
 ## Alternatives Considered
 
 ### Seçenek A: Raw `RabbitMQ.Client`

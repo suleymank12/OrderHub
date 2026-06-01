@@ -38,6 +38,9 @@ public sealed class Order : AggregateRoot<Guid>
     /// <summary>Onaylanma zamanı (UTC); onaylanmadıysa null.</summary>
     public DateTime? ConfirmedAtUtc { get; private set; }
 
+    /// <summary>Ödenme zamanı (UTC); ödenmediyse null.</summary>
+    public DateTime? PaidAtUtc { get; private set; }
+
     /// <summary>İptal zamanı (UTC); iptal edilmediyse null.</summary>
     public DateTime? CancelledAtUtc { get; private set; }
 
@@ -101,6 +104,28 @@ public sealed class Order : AggregateRoot<Guid>
         Status = OrderStatus.Confirmed;
         ConfirmedAtUtc = DateTime.UtcNow;
         RaiseDomainEvent(new OrderConfirmed(Id, CustomerId, Total));
+    }
+
+    /// <summary>
+    /// Siparişi ödenmiş işaretler (Confirmed → Paid) ve <see cref="OrderPaid"/> yükseltir. <b>Idempotent</b>:
+    /// zaten Paid ise no-op (throw etmez — at-least-once mesaj teslimatı + status guard precedent'i). Confirmed
+    /// dışındaki geçersiz durumlardan (örn. Pending/Cancelled) → <see cref="InvalidOrderStatusTransitionException"/>.
+    /// </summary>
+    public void MarkPaid()
+    {
+        if (Status == OrderStatus.Paid)
+        {
+            return; // Idempotent no-op: aynı PaymentSucceeded ikinci kez gelirse güvenli.
+        }
+
+        if (Status != OrderStatus.Confirmed)
+        {
+            throw new InvalidOrderStatusTransitionException(Status, OrderStatus.Paid);
+        }
+
+        Status = OrderStatus.Paid;
+        PaidAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new OrderPaid(Id));
     }
 
     /// <summary>
