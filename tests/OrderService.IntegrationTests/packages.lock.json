@@ -143,6 +143,11 @@
         "resolved": "1.2.1",
         "contentHash": "11lokmfliBEMMmjeqxFGNpqGXq6tN96zFqpBmfYeahr4Ybk63oDmeJmOflsATjobYkX248g5Y62oQ2NNnZaeww=="
       },
+      "MassTransit.Abstractions": {
+        "type": "Transitive",
+        "resolved": "8.5.9",
+        "contentHash": "osNYcFMNzMbwPG6x5zc9u5l0t43+uvlbVqjS99hSIaop8uWnABps7NRgqAUgWX30Zd00wKhDv1nBFRtPV6CFSw=="
+      },
       "MediatR.Contracts": {
         "type": "Transitive",
         "resolved": "2.0.1",
@@ -599,6 +604,15 @@
         "resolved": "13.0.1",
         "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A=="
       },
+      "RabbitMQ.Client": {
+        "type": "Transitive",
+        "resolved": "7.2.1",
+        "contentHash": "YKXEfg9fVQiTKgZlvIhAfPSFaamEgi8DsQmisCH0IAsU4FYLrtoguDrDj6JtJVGUt40QPnBLRH6fTQcAC4qsOg==",
+        "dependencies": {
+          "System.IO.Pipelines": "8.0.0",
+          "System.Threading.RateLimiting": "8.0.0"
+        }
+      },
       "Serilog": {
         "type": "Transitive",
         "resolved": "4.0.0",
@@ -819,6 +833,11 @@
         "resolved": "4.7.2",
         "contentHash": "TcMd95wcrubm9nHvJEQs70rC0H/8omiSGGpU4FQ/ZA1URIqD4pjmFJh2Mfv1yH1eHgJDWTi2hMDXwTET+zOOyg=="
       },
+      "System.Threading.RateLimiting": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "7mu9v0QDv66ar3DpGSZHg9NuNcxDaaAcnMULuZlaTpP9+hwXhrxNGsF5GmLkSHxFdb5bBc1TzeujsRgTrPWi+Q=="
+      },
       "System.Threading.Tasks.Extensions": {
         "type": "Transitive",
         "resolved": "4.5.4",
@@ -879,6 +898,20 @@
       "orderhub.common": {
         "type": "Project"
       },
+      "orderhub.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "OrderHub.EventBus": "[1.0.0, )"
+        }
+      },
+      "orderhub.eventbus": {
+        "type": "Project",
+        "dependencies": {
+          "MassTransit": "[8.5.9, )",
+          "MassTransit.RabbitMQ": "[8.5.9, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )"
+        }
+      },
       "orderhub.orderservice.api": {
         "type": "Project",
         "dependencies": {
@@ -919,7 +952,21 @@
           "Hangfire.Core": "[1.8.23, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[8.0.11, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[8.0.1, )",
-          "OrderHub.OrderService.Application": "[1.0.0, )"
+          "OrderHub.Contracts": "[1.0.0, )",
+          "OrderHub.OrderService.Application": "[1.0.0, )",
+          "OrderHub.Outbox": "[1.0.0, )"
+        }
+      },
+      "orderhub.outbox": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Relational": "[8.0.11, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
+          "Microsoft.Extensions.Hosting.Abstractions": "[8.0.1, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[8.0.2, )",
+          "Microsoft.Extensions.Options": "[8.0.2, )",
+          "OrderHub.Common": "[1.0.0, )",
+          "OrderHub.EventBus": "[1.0.0, )"
         }
       },
       "AspNetCore.HealthChecks.SqlServer": {
@@ -992,6 +1039,30 @@
         "dependencies": {
           "Mapster": "7.4.0",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0"
+        }
+      },
+      "MassTransit": {
+        "type": "CentralTransitive",
+        "requested": "[8.5.9, )",
+        "resolved": "8.5.9",
+        "contentHash": "hhJyrU+7qReF1F+MBgH73E+KEx9oBcRFaCzEk90r8hOgI4HPhT2DYVfaHKGTHADE/P49H48xGgvO30Q9nWn7aA==",
+        "dependencies": {
+          "MassTransit.Abstractions": "8.5.9",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0",
+          "Microsoft.Extensions.Hosting.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Options": "8.0.0"
+        }
+      },
+      "MassTransit.RabbitMQ": {
+        "type": "CentralTransitive",
+        "requested": "[8.5.9, )",
+        "resolved": "8.5.9",
+        "contentHash": "TikWOjyKxh9Lbk4BppOtF5PIAt5HwzSXIUgJ3bqI1waD94xR/9xhxQyl2xY/913vMhqu4DObXaQESLr9WNberA==",
+        "dependencies": {
+          "MassTransit": "8.5.9",
+          "RabbitMQ.Client": "7.2.1"
         }
       },
       "MediatR": {

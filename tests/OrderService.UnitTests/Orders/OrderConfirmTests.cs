@@ -24,8 +24,11 @@ public sealed class OrderConfirmTests
 
         order.Confirm();
 
-        order.DomainEvents.OfType<OrderConfirmed>().Should().ContainSingle()
-            .Which.OrderId.Should().Be(order.Id);
+        var confirmed = order.DomainEvents.OfType<OrderConfirmed>().Should().ContainSingle().Which;
+        confirmed.OrderId.Should().Be(order.Id);
+        // Faz 3: ödeme köprülemesi için CustomerId + Total taşınmalı (outbox çevirisi saf kalsın).
+        confirmed.CustomerId.Should().Be(order.CustomerId);
+        confirmed.Total.Should().Be(order.Total);
     }
 
     [Fact]

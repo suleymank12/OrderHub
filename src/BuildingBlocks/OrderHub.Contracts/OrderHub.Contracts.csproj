@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Servisler arası integration event SÖZLEŞMELERİ (paylaşılan kontrat assembly'si).
+       Producer (OrderService) ve consumer (PaymentService, 3.3) AYNI CLR tipine referans verir →
+       MassTransit mesaj kimliği (namespace + tip adı) iki tarafta birebir eşleşir.
+       Yalnızca IIntegrationEvent'e bağlanır; hiçbir servis domain'ine (Money vb.) bağlanmaz → alanlar
+       primitive (decimal/string). TFM/Nullable/ImplicitUsings → kök Directory.Build.props. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+  </ItemGroup>
+
+</Project>

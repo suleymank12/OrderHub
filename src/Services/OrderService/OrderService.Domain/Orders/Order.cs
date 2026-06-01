@@ -100,7 +100,7 @@ public sealed class Order : AggregateRoot<Guid>
 
         Status = OrderStatus.Confirmed;
         ConfirmedAtUtc = DateTime.UtcNow;
-        RaiseDomainEvent(new OrderConfirmed(Id));
+        RaiseDomainEvent(new OrderConfirmed(Id, CustomerId, Total));
     }
 
     /// <summary>

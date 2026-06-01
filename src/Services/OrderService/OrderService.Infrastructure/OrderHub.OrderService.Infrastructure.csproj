@@ -12,6 +12,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OrderService.Application\OrderHub.OrderService.Application.csproj" />
+    <!-- Outbox writer: OutboxInterceptor + IOutboxDbContext + OutboxMessage(Configuration). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
+    <!-- Integration event sözleşmesi: OrderConfirmed → ProcessPaymentIntegrationEvent çevirisi için. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
