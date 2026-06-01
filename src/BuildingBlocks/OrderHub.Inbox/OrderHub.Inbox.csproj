@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Consumer-side dedup (Inbox pattern, ADR-0005). OrderHub.Outbox simetriği; ama inbox doğası gereği
+       consume-pipeline concern'ü olduğundan MassTransit'e bağlanır (outbox transport-agnostik kalmıştı).
+       TFM / Nullable / ImplicitUsings → kök Directory.Build.props. -->
+
+  <ItemGroup>
+    <!-- IIntegrationEvent: dedup anahtarı evt.Id (ADR-0005 Karar 2). -->
+    <ProjectReference Include="..\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- IEntityTypeConfiguration + DbSet + AnyAsync (Relational, Core'u getirir). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <!-- InboxConsumeFilter : IFilter<ConsumerConsumeContext<,>>. -->
+    <PackageReference Include="MassTransit" />
+    <!-- ILogger (dedup-skip yapısal log). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <!-- AddInbox DI extension. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+</Project>

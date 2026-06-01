@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using OrderHub.Inbox;
+using OrderHub.Inbox.Persistence;
 using OrderHub.Outbox;
 using OrderHub.Outbox.Persistence;
 using OrderHub.PaymentService.Application.Abstractions.Persistence;
@@ -12,20 +14,23 @@ namespace OrderHub.PaymentService.Infrastructure.Persistence;
 /// → pre-commit interceptor outbox satırını atomik yazar (ADR-0002 Faz 3 Karar 1). Kendi DB'si: OrderHub_Payment.
 /// </summary>
 internal sealed class PaymentDbContext(DbContextOptions<PaymentDbContext> options)
-    : DbContext(options), IUnitOfWork, IOutboxDbContext
+    : DbContext(options), IUnitOfWork, IOutboxDbContext, IInboxDbContext
 {
     public DbSet<Payment> Payments => Set<Payment>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Bu assembly'deki IEntityTypeConfiguration'lar (Payment) otomatik uygulanır.
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PaymentDbContext).Assembly);
 
-        // OutboxMessageConfiguration FARKLI assembly'de (OrderHub.Outbox) → assembly-scan onu YAKALAMAZ;
-        // explicit uygulanmalı, aksi halde migration OutboxMessages tablosunu üretmez (Adım 2 dersi).
+        // Outbox/Inbox configuration'ları FARKLI assembly'lerde (building block) → assembly-scan YAKALAMAZ;
+        // explicit uygulanmalı, aksi halde migration tabloları üretmez.
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new InboxMessageConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

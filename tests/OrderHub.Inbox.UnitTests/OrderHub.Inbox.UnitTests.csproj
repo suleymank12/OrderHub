@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.Inbox.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.Inbox.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <!-- Filter dedup mantığı için hafif IInboxDbContext (flat tablo → InMemory uygun). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <!-- ConsumerConsumeContext / IPipe mock'lamak için. -->
+    <PackageReference Include="MassTransit" />
+  </ItemGroup>
+
+</Project>

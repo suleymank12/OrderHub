@@ -559,6 +559,16 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )"
         }
       },
+      "orderhub.inbox": {
+        "type": "Project",
+        "dependencies": {
+          "MassTransit": "[8.5.9, )",
+          "Microsoft.EntityFrameworkCore.Relational": "[8.0.11, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[8.0.2, )",
+          "OrderHub.EventBus": "[1.0.0, )"
+        }
+      },
       "orderhub.outbox": {
         "type": "Project",
         "dependencies": {
@@ -599,6 +609,7 @@
           "Microsoft.Extensions.Configuration.Binder": "[8.0.2, )",
           "OrderHub.Contracts": "[1.0.0, )",
           "OrderHub.EventBus": "[1.0.0, )",
+          "OrderHub.Inbox": "[1.0.0, )",
           "OrderHub.Outbox": "[1.0.0, )",
           "OrderHub.PaymentService.Application": "[1.0.0, )"
         }

@@ -14,6 +14,8 @@
     <ProjectReference Include="..\OrderService.Application\OrderHub.OrderService.Application.csproj" />
     <!-- Outbox writer: OutboxInterceptor + IOutboxDbContext + OutboxMessage(Configuration). -->
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
+    <!-- Inbox: IInboxDbContext + InboxMessage(Configuration) + consume filter (3d-2'de pipeline'a bağlanır). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
     <!-- Transport (RabbitMQ): AddRabbitMqEventBus + RabbitMqOptions (outbox processor publish hedefi). -->
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
     <!-- Integration event sözleşmesi: OrderConfirmed → ProcessPaymentIntegrationEvent çevirisi için. -->

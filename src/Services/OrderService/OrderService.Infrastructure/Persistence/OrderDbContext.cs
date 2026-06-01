@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using OrderHub.Inbox;
+using OrderHub.Inbox.Persistence;
 using OrderHub.OrderService.Application.Abstractions.Persistence;
 using OrderHub.OrderService.Domain.Orders;
 using OrderHub.Outbox;
@@ -15,20 +17,23 @@ namespace OrderHub.OrderService.Infrastructure.Persistence;
 /// DB/transaction</b> (database-per-service) → pre-commit interceptor atomik yazar (ADR-0002 Faz 3 Karar 1).
 /// </summary>
 internal sealed class OrderDbContext(DbContextOptions<OrderDbContext> options)
-    : DbContext(options), IUnitOfWork, IOutboxDbContext
+    : DbContext(options), IUnitOfWork, IOutboxDbContext, IInboxDbContext
 {
     public DbSet<Order> Orders => Set<Order>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Bu assembly'deki IEntityTypeConfiguration'lar (Order, OrderItem) otomatik uygulanır.
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
 
-        // OutboxMessageConfiguration FARKLI assembly'de (OrderHub.Outbox) → assembly-scan onu YAKALAMAZ;
-        // explicit uygulanmalı, aksi halde migration OutboxMessages tablosunu üretmez.
+        // Outbox/Inbox configuration'ları FARKLI assembly'lerde (building block) → assembly-scan YAKALAMAZ;
+        // explicit uygulanmalı, aksi halde migration tabloları üretmez.
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new InboxMessageConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

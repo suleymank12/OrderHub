@@ -15,6 +15,8 @@
     <!-- Outbox writer: OutboxInterceptor + IOutboxDbContext + OutboxMessage(Configuration).
          Integration event mapping (registry) 3c'de eklenecek → Contracts ref de o zaman. -->
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
+    <!-- Inbox: IInboxDbContext + InboxMessage(Configuration) + consume filter (3d-2'de pipeline'a bağlanır). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
     <!-- Transport (RabbitMQ): AddRabbitMqEventBus + RabbitMqOptions (outbox processor publish hedefi). -->
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
     <!-- Integration event sözleşmeleri: ProcessPayment consume + PaymentSucceeded/Failed publish (outbox Map). -->

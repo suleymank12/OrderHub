@@ -35,6 +35,9 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.11" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11" />
+    <!-- Yalnız UNIT test: InboxConsumeFilter dedup mantığı (flat tablo, owned type yok → InMemory uygun;
+         "no InMemory" kuralı domain-persistence fidelity'si içindir, burada geçerli değil). -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
     <!-- IHostedService / AddHostedService: recurring job registrar (sweep) startup'ta kayıt için. -->
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <!-- ConfigurationBinder.Get<T>(): Infrastructure composition root'ta RabbitMqOptions'ı config'ten bağlar
