@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OrderHub.Contracts.Payments;
 using OrderHub.EventBus.RabbitMq;
 using OrderHub.Outbox;
 using OrderHub.PaymentService.Application.Abstractions.Persistence;
+using OrderHub.PaymentService.Domain.Payments.Events;
+using OrderHub.PaymentService.Infrastructure.Messaging;
 using OrderHub.PaymentService.Infrastructure.Persistence;
 using OrderHub.PaymentService.Infrastructure.Persistence.Repositories;
 
@@ -31,10 +34,26 @@ public static class DependencyInjection
                 $"Connection string '{ConnectionStringName}' is not configured.");
         }
 
-        // Outbox WRITE yolu: registry şimdilik BOŞ — PaymentSucceeded/Failed → integration event mapping
-        // 3c scope'u (RabbitMQ ile birlikte). BOŞ registry K2 ihlali değil: şema + writer yolu burada hazır
-        // edilir (migration OutboxMessages'ı üretir), yalnızca Map çağrıları 3c'ye ertelenir (ROADMAP'te dokümante).
-        services.AddOutboxWriter(_ => { });
+        // Outbox WRITE yolu: domain olay → integration event çevirileri. Id = EventId (uçtan uca dedup,
+        // ADR-0002 Karar 4 — registry invariant'ı bunu runtime'da doğrular). Money/domain tipi sızdırılmaz.
+        services.AddOutboxWriter(registry =>
+        {
+            registry.Map<PaymentSucceeded>(domainEvent => new PaymentSucceededIntegrationEvent
+            {
+                Id = domainEvent.EventId,
+                OccurredOnUtc = domainEvent.OccurredOnUtc,
+                OrderId = domainEvent.OrderId,
+                ExternalTransactionId = domainEvent.ExternalTransactionId,
+            });
+
+            registry.Map<PaymentFailed>(domainEvent => new PaymentFailedIntegrationEvent
+            {
+                Id = domainEvent.EventId,
+                OccurredOnUtc = domainEvent.OccurredOnUtc,
+                OrderId = domainEvent.OrderId,
+                Reason = domainEvent.Reason,
+            });
+        });
 
         services.AddDbContext<PaymentDbContext>((serviceProvider, options) =>
             options
@@ -45,10 +64,13 @@ public static class DependencyInjection
         // Outbox processor port'u → PaymentDbContext (internal olduğundan bu kayıt Infrastructure'da olmalı).
         services.AddScoped<IOutboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<PaymentDbContext>());
 
-        // Transport (RabbitMQ, ADR-0004) + outbox processor. Registry 3a'da boş → processor publish edecek
-        // satır bulamaz (no-op) ta ki 3c mapping'i eklenene dek. RabbitMQ ayarları config'ten (secret env'den, K3).
+        // Transport (RabbitMQ, ADR-0004) + ProcessPayment consumer + outbox processor. RabbitMQ ayarları
+        // config'ten (secret env'den, K3). Consumer ProcessPaymentIntegrationEvent'i tüketir; testte
+        // ApiTestFactory yok → adanmış in-memory harness consumer'ı kendi kaydeder.
         var rabbitMqOptions = configuration.GetSection(RabbitMqSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
-        services.AddRabbitMqEventBus(rabbitMqOptions);
+        services.AddRabbitMqEventBus(
+            rabbitMqOptions,
+            busConfigurator => busConfigurator.AddConsumer<ProcessPaymentIntegrationEventConsumer>());
         services.AddOutboxProcessor();
 
         services.AddScoped<IPaymentRepository, PaymentRepository>();

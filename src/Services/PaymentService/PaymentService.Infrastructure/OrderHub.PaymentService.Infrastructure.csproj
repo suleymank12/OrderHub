@@ -17,6 +17,15 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
     <!-- Transport (RabbitMQ): AddRabbitMqEventBus + RabbitMqOptions (outbox processor publish hedefi). -->
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- Integration event sözleşmeleri: ProcessPayment consume + PaymentSucceeded/Failed publish (outbox Map). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Consumer ISender ile MediatR'a delege eder ve ValidationException (poison message) yakalar →
+         doğrudan kullanım, transitive'e güvenme. -->
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
   <ItemGroup>

@@ -47,6 +47,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.PaymentService.Api
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.PaymentService.UnitTests", "tests\PaymentService.UnitTests\OrderHub.PaymentService.UnitTests.csproj", "{86E1F5D3-A134-4147-912E-4ECC3D759E26}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.PaymentService.IntegrationTests", "tests\PaymentService.IntegrationTests\OrderHub.PaymentService.IntegrationTests.csproj", "{DBB7F3BA-23B1-4AD7-9F85-89E03D3B7DC6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -120,6 +122,10 @@ Global
 		{86E1F5D3-A134-4147-912E-4ECC3D759E26}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{86E1F5D3-A134-4147-912E-4ECC3D759E26}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{86E1F5D3-A134-4147-912E-4ECC3D759E26}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBB7F3BA-23B1-4AD7-9F85-89E03D3B7DC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBB7F3BA-23B1-4AD7-9F85-89E03D3B7DC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBB7F3BA-23B1-4AD7-9F85-89E03D3B7DC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBB7F3BA-23B1-4AD7-9F85-89E03D3B7DC6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A326A5EC-9671-4D6D-8B8B-503E6D146E7A} = {81B9C654-3B5F-4587-B481-8B3379AF0617}
@@ -142,5 +148,6 @@ Global
 		{A9F36135-AB2E-40CB-A0D5-42F31FBAAD43} = {246CDE55-B337-4534-AC2F-27F5BBC4A964}
 		{52606B93-8F0E-4C3F-AE49-8B9E83AC7909} = {246CDE55-B337-4534-AC2F-27F5BBC4A964}
 		{86E1F5D3-A134-4147-912E-4ECC3D759E26} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
+		{DBB7F3BA-23B1-4AD7-9F85-89E03D3B7DC6} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 	EndGlobalSection
 EndGlobal

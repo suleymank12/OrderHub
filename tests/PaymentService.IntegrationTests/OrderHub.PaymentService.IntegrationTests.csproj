@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.PaymentService.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.PaymentService.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\PaymentService\PaymentService.Api\OrderHub.PaymentService.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\PaymentService\PaymentService.Infrastructure\OrderHub.PaymentService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <!-- Consumer'ı broker'sız test etmek için MassTransit in-memory test harness (ApiTestFactory yok). -->
+    <PackageReference Include="MassTransit" />
+  </ItemGroup>
+
+</Project>
