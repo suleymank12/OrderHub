@@ -13,6 +13,7 @@
   <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Moq" />
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>

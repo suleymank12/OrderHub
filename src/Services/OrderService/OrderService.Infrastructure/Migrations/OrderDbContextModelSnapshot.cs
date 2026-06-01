@@ -57,6 +57,8 @@ namespace OrderHub.OrderService.Infrastructure.Migrations
 
                     b.HasIndex("CustomerId");
 
+                    b.HasIndex("Status", "CreatedAtUtc");
+
                     b.ToTable("Orders", (string)null);
                 });
 

@@ -25,6 +25,7 @@ artifacts/
 # --- Test & coverage çıktıları ---
 [Tt]est[Rr]esults/
 coverage/
+coverage-report/
 *.coverage
 *.coverview
 *.cobertura.xml

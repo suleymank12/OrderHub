@@ -1,8 +1,10 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using OrderHub.OrderService.Api.BackgroundJobs;
 using OrderHub.OrderService.Api.Contracts;
 using OrderHub.OrderService.Api.Extensions;
 using OrderHub.OrderService.Api.Identity;
+using OrderHub.OrderService.Application.Orders.Configuration;
 using OrderHub.OrderService.Application;
 using OrderHub.OrderService.Infrastructure;
 using OrderHub.OrderService.Infrastructure.Persistence;
@@ -24,9 +26,17 @@ try
     builder.Services
         .AddApplication()
         .AddInfrastructure(builder.Configuration)
+        .AddHangfireServices(builder.Configuration, builder.Environment)
         .AddJwtAuthentication(builder.Configuration)
         .AddApiServices(builder.Configuration)
         .AddSwaggerWithJwt();
+
+    // Ödenmeyen sipariş zaman aşımı politikası (Application option'ı, composition root'ta bind edilir).
+    // Geçersiz süre → startup'ta fail-fast (cryptic runtime hatası yerine net).
+    builder.Services.AddOptions<OrderTimeoutOptions>()
+        .Bind(builder.Configuration.GetSection(OrderTimeoutOptions.SectionName))
+        .Validate(options => options.UnpaidTimeout > TimeSpan.Zero, "OrderTimeout:UnpaidTimeout must be positive.")
+        .ValidateOnStart();
 
     builder.Services.AddControllers();
 
@@ -47,6 +57,9 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
+
+    // Hangfire dashboard yalnızca Development'ta map'lenir (prod'da endpoint yok). İçeride localhost filtresi var.
+    app.MapHangfireDashboardDevOnly();
 
     // Liveness: app ayakta mı (dependency check'i YOK). Readiness: "ready" tag'li check'ler (DB).
     app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });

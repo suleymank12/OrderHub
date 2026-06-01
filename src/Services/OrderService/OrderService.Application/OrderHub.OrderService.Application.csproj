@@ -9,6 +9,10 @@
        Prod davranışı değişmez, public API yüzeyi genişlemez. -->
   <ItemGroup>
     <InternalsVisibleTo Include="OrderHub.OrderService.UnitTests" />
+    <!-- Background job sınıfları (CancelUnpaidOrderJob/SweepUnpaidOrdersJob) internal; Infrastructure'daki
+         Hangfire adapter/registrar onları tip olarak schedule eder (Infra→App, DIP). Public yapmak yerine
+         friend assembly → API yüzeyi dar kalır (§9). -->
+    <InternalsVisibleTo Include="OrderHub.OrderService.Infrastructure" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +27,7 @@
     <PackageReference Include="Mapster" />
     <PackageReference Include="Mapster.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
 
 </Project>

@@ -27,4 +27,11 @@ public interface IOrderRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// <paramref name="cutoffUtc"/>'den önce oluşturulmuş, hâlâ <see cref="OrderStatus.Pending"/> olan
+    /// siparişleri (sweep backstop için) <b>tracked</b> döner — çağıran <see cref="Order.Cancel"/> edip
+    /// <see cref="IUnitOfWork.SaveChangesAsync"/> ile kalıcılaştırabilir.
+    /// </summary>
+    Task<IReadOnlyList<Order>> GetPendingOlderThanAsync(DateTime cutoffUtc, CancellationToken cancellationToken);
 }
