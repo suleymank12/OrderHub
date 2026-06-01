@@ -31,6 +31,16 @@
           "Microsoft.Extensions.Options": "8.0.0"
         }
       },
+      "MassTransit.RabbitMQ": {
+        "type": "Direct",
+        "requested": "[8.5.9, )",
+        "resolved": "8.5.9",
+        "contentHash": "TikWOjyKxh9Lbk4BppOtF5PIAt5HwzSXIUgJ3bqI1waD94xR/9xhxQyl2xY/913vMhqu4DObXaQESLr9WNberA==",
+        "dependencies": {
+          "MassTransit": "8.5.9",
+          "RabbitMQ.Client": "7.2.1"
+        }
+      },
       "Microsoft.AspNetCore.Mvc.Testing": {
         "type": "Direct",
         "requested": "[8.0.11, )",
@@ -66,6 +76,15 @@
         "requested": "[4.0.0, )",
         "resolved": "4.0.0",
         "contentHash": "HausfOB3+UDDujygP2laXCUiNtrKrWJMeKnpTvP4F9JP0GswSsYlJS/mKEWw8ZXSpUd31K8enGZ7wW0HHeyg0w==",
+        "dependencies": {
+          "Testcontainers": "4.0.0"
+        }
+      },
+      "Testcontainers.RabbitMq": {
+        "type": "Direct",
+        "requested": "[4.0.0, )",
+        "resolved": "4.0.0",
+        "contentHash": "8x0kkzpLRTYLbQq3gQ4jwX62SfhSaeZQn89U33W3vkux536joayDrfLiF19hJYI4wEbytEMV2+Lal1TgQCY+Eg==",
         "dependencies": {
           "Testcontainers": "4.0.0"
         }
@@ -1047,16 +1066,6 @@
         "dependencies": {
           "Mapster": "7.4.0",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0"
-        }
-      },
-      "MassTransit.RabbitMQ": {
-        "type": "CentralTransitive",
-        "requested": "[8.5.9, )",
-        "resolved": "8.5.9",
-        "contentHash": "TikWOjyKxh9Lbk4BppOtF5PIAt5HwzSXIUgJ3bqI1waD94xR/9xhxQyl2xY/913vMhqu4DObXaQESLr9WNberA==",
-        "dependencies": {
-          "MassTransit": "8.5.9",
-          "RabbitMQ.Client": "7.2.1"
         }
       },
       "MediatR": {
