@@ -72,6 +72,9 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasIndex(order => order.CustomerId);
         builder.HasIndex(order => order.CreatedAtUtc);
 
+        // Sweep backstop sorgusu (Status='Pending' AND CreatedAtUtc < cutoff) için composite index (ADR-0003).
+        builder.HasIndex(order => new { order.Status, order.CreatedAtUtc });
+
         // Domain event'ler kolon değil; EF map etmeye çalışmasın.
         builder.Ignore(order => order.DomainEvents);
     }

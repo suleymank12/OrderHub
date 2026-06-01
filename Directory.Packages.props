@@ -18,11 +18,26 @@
          yapısal log basar; Serilog sink Api katmanında. MediatR/FluentValidation bunu transitively
          getirmiyor → açıkça pinliyoruz. -->
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <!-- IOptions<T> abstraction'ı: Application config option'larını (OrderTimeoutOptions) bağımlılık olarak
+         alır; binding/validation Infrastructure'da. Abstraction-only paket (sink değil). -->
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="8.0.2" />
   </ItemGroup>
 
   <ItemGroup Label="EF Core (SQL Server)">
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11" />
+    <!-- IHostedService / AddHostedService: recurring job registrar (sweep) startup'ta kayıt için. -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Background Jobs (Hangfire)">
+    <!-- 1.8.23: 1.8 hattının son stable'ı (.NET 8 uyumlu, SQL Server 2022 uyumlu). 1.8 = ücretsiz LGPL hat.
+         Üçü de aynı sürüme pinli (diamond sürprizini keser). Hangfire.Core transitive ama CPM transitive
+         pinning açık olduğundan explicit pinleniyor. Hangfire iş arg'larını internal Newtonsoft.Json ile
+         serialize eder → bilinçli §3 istisnası (bkz. ADR-0003 §6). -->
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.23" />
+    <PackageVersion Include="Hangfire.SqlServer" Version="1.8.23" />
+    <PackageVersion Include="Hangfire.Core" Version="1.8.23" />
   </ItemGroup>
 
   <ItemGroup Label="API / Auth / Logging / Health">

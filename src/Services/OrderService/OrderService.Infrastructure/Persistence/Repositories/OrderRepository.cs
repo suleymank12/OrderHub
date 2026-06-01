@@ -39,4 +39,13 @@ internal sealed class OrderRepository(OrderDbContext context) : IOrderRepository
 
         return (items, totalCount);
     }
+
+    // Tracking AÇIK (AsNoTracking YOK): sweep job Cancel edip SaveChanges yapacak. Items'a gerek yok
+    // (Cancel kalemlere dokunmaz). Composite index (Status, CreatedAtUtc) bu sorguyu karşılar (ADR-0003).
+    public async Task<IReadOnlyList<Order>> GetPendingOlderThanAsync(
+        DateTime cutoffUtc,
+        CancellationToken cancellationToken) =>
+        await context.Orders
+            .Where(order => order.Status == OrderStatus.Pending && order.CreatedAtUtc < cutoffUtc)
+            .ToListAsync(cancellationToken);
 }

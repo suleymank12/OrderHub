@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderHub.OrderService.Infrastructure.Persistence;
 using OrderHub.OrderService.Infrastructure.Persistence.Interceptors;
@@ -26,13 +27,19 @@ public sealed class SqlServerContainerFixture : IAsyncLifetime
         await context.Database.MigrateAsync();
     }
 
-    /// <summary>Container'a bağlı yeni bir <see cref="OrderDbContext"/> üretir.</summary>
-    internal OrderDbContext CreateContext()
+    /// <summary>
+    /// Container'a bağlı yeni bir <see cref="OrderDbContext"/> üretir.
+    /// <paramref name="publisher"/> verilmezse <see cref="NullPublisher"/> kullanılır: dispatch
+    /// davranışını doğrulamayan testler event yayınını umursamaz; doğrulayan testler Moq inject eder.
+    /// </summary>
+    internal OrderDbContext CreateContext(IPublisher? publisher = null)
     {
+        var effectivePublisher = publisher ?? NullPublisher.Instance;
+
         // Interceptor'ı dahil et → test context'i production (AddInfrastructure) ile aynı davranır.
         var options = new DbContextOptionsBuilder<OrderDbContext>()
             .UseSqlServer(_container.GetConnectionString())
-            .AddInterceptors(new ClearDomainEventsInterceptor())
+            .AddInterceptors(new DispatchDomainEventsInterceptor(effectivePublisher))
             .Options;
 
         return new OrderDbContext(options);

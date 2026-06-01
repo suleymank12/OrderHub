@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using OrderHub.OrderService.Domain.Orders;
 
 namespace OrderHub.OrderService.Application.Common.Logging;
 
@@ -25,4 +26,34 @@ internal static partial class ApplicationLog
     [LoggerMessage(EventId = 2000, Level = LogLevel.Information,
         Message = "Order {OrderId} created for customer {CustomerId}")]
     public static partial void OrderCreated(ILogger logger, Guid orderId, Guid customerId);
+
+    [LoggerMessage(EventId = 2001, Level = LogLevel.Information,
+        Message = "Cancellation scheduled for order {OrderId} after {Timeout}")]
+    public static partial void OrderCancellationScheduled(ILogger logger, Guid orderId, TimeSpan timeout);
+
+    [LoggerMessage(EventId = 2002, Level = LogLevel.Information,
+        Message = "Order {OrderId} cancelled by payment timeout")]
+    public static partial void UnpaidOrderCancelled(ILogger logger, Guid orderId);
+
+    [LoggerMessage(EventId = 2003, Level = LogLevel.Debug,
+        Message = "Cancellation skipped for order {OrderId}; status is {CurrentStatus} (idempotent no-op)")]
+    public static partial void UnpaidOrderCancellationSkipped(
+        ILogger logger, Guid orderId, OrderStatus? currentStatus);
+
+    [LoggerMessage(EventId = 2004, Level = LogLevel.Information,
+        Message = "Sweep cancelled {Count} unpaid order(s) created before {CutoffUtc:o}")]
+    public static partial void UnpaidOrdersSwept(ILogger logger, int count, DateTime cutoffUtc);
+
+    [LoggerMessage(EventId = 2005, Level = LogLevel.Information,
+        Message = "Daily sales report {Date}: {Currency} orders={OrderCount} revenue={Revenue}")]
+    public static partial void DailySalesReportLine(
+        ILogger logger, DateOnly date, string currency, int orderCount, decimal revenue);
+
+    [LoggerMessage(EventId = 2006, Level = LogLevel.Information,
+        Message = "Daily sales report {Date}: no orders")]
+    public static partial void DailySalesReportEmpty(ILogger logger, DateOnly date);
+
+    [LoggerMessage(EventId = 2007, Level = LogLevel.Information,
+        Message = "Low-stock alert skipped: InventoryService not integrated yet (Faz 5)")]
+    public static partial void LowStockAlertSkipped(ILogger logger);
 }

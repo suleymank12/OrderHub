@@ -28,11 +28,12 @@ internal sealed class CapturingLogger<T> : ILogger<T>
         Func<TState, Exception?, string> formatter)
     {
         ArgumentNullException.ThrowIfNull(formatter);
-        _entries.Add(new LogEntry(logLevel, formatter(state, exception)));
+        _entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception)));
     }
 }
 
 /// <summary>Yakalanmış tek bir log kaydı.</summary>
 /// <param name="Level">Log seviyesi.</param>
+/// <param name="EventId">Log şablonunun kayıt kimliği (source-gen <c>[LoggerMessage]</c> EventId).</param>
 /// <param name="Message">Render edilmiş mesaj metni.</param>
-internal sealed record LogEntry(LogLevel Level, string Message);
+internal sealed record LogEntry(LogLevel Level, EventId EventId, string Message);

@@ -98,7 +98,7 @@ public sealed class OrderDbContextTests(SqlServerContainerFixture fixture)
         context.Orders.Add(order);
         await context.SaveChangesAsync();
 
-        order.DomainEvents.Should().BeEmpty(); // ClearDomainEventsInterceptor commit sonrası temizledi.
+        order.DomainEvents.Should().BeEmpty(); // DispatchDomainEventsInterceptor commit sonrası temizledi.
     }
 
     [Fact]
