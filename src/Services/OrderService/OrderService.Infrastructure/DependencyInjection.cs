@@ -12,6 +12,7 @@ using OrderHub.OrderService.Infrastructure.Persistence.Interceptors;
 using OrderHub.OrderService.Infrastructure.Persistence.Repositories;
 using OrderHub.OrderService.Infrastructure.Scheduling;
 using OrderHub.Outbox;
+using OrderHub.EventBus.RabbitMq;
 
 namespace OrderHub.OrderService.Infrastructure;
 
@@ -22,6 +23,7 @@ namespace OrderHub.OrderService.Infrastructure;
 public static class DependencyInjection
 {
     private const string ConnectionStringName = "DefaultConnection";
+    private const string RabbitMqSectionName = "RabbitMq";
 
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
@@ -61,6 +63,17 @@ public static class DependencyInjection
                 // Outbox domain event'i yalnız OKUR; tek temizleyici post-commit dispatcher'dır (Karar 2).
                 .AddOutboxInterceptor(serviceProvider)
                 .AddInterceptors(serviceProvider.GetRequiredService<DispatchDomainEventsInterceptor>()));
+
+        // Outbox processor port'u → OrderDbContext (internal olduğundan bu kayıt Infrastructure'da olmalı).
+        // Processor (aşağıda) bu port üzerinden işlenmemiş satırları okur.
+        services.AddScoped<IOutboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<OrderDbContext>());
+
+        // Transport (RabbitMQ, ADR-0004) + outbox processor: yazılan outbox satırlarını polling ile publish eder.
+        // RabbitMQ ayarları config'ten (secret env'den, K3 — appsettings placeholder). Testte ApiTestFactory
+        // bu MassTransit kaydını in-memory test harness'e çevirir → broker'a hiç bağlanılmaz.
+        var rabbitMqOptions = configuration.GetSection(RabbitMqSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
+        services.AddRabbitMqEventBus(rabbitMqOptions);
+        services.AddOutboxProcessor();
 
         services.AddScoped<IOrderRepository, OrderRepository>();
 

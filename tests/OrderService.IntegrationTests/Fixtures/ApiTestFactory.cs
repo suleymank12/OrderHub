@@ -1,5 +1,7 @@
+using MassTransit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -52,8 +54,41 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>, IAsyncLifet
         await context.Database.ExecuteSqlRawAsync("DELETE FROM Orders");
     }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
         builder.UseEnvironment(Environments.Development); // dev token endpoint + Swagger map'lensin.
+
+        // Production RabbitMQ MassTransit kaydını tamamen kaldırıp in-memory test harness ile değiştir →
+        // testte broker'a HİÇ bağlanılmaz (connection-retry gürültüsü olmaz). OutboxProcessorService
+        // (HostedService) bu in-memory bus üzerinden publish edebilir; mevcut testlerde Confirm HTTP ucu
+        // olmadığından outbox satırı yazılmaz → processor boş polling yapar (no-op, BatchFailed loop'u olmaz).
+        builder.ConfigureTestServices(services =>
+        {
+            RemoveMassTransitRegistrations(services);
+            services.AddMassTransitTestHarness();
+        });
+    }
+
+    // MassTransit'in tüm DI kayıtlarını (RabbitMQ transport + bus hosted service dahil) kaldırır →
+    // AddMassTransitTestHarness temiz zeminde in-memory transport kurar ("already registered" çakışması olmaz).
+    // IIntegrationEventPublisher (OrderHub.EventBus namespace) kalır → harness'in in-memory IPublishEndpoint'ini kullanır.
+    private static void RemoveMassTransitRegistrations(IServiceCollection services)
+    {
+        var massTransitDescriptors = services
+            .Where(descriptor =>
+                IsMassTransitType(descriptor.ServiceType) ||
+                IsMassTransitType(descriptor.ImplementationType) ||
+                IsMassTransitType(descriptor.ImplementationInstance?.GetType()))
+            .ToList();
+
+        foreach (var descriptor in massTransitDescriptors)
+        {
+            services.Remove(descriptor);
+        }
+    }
+
+    private static bool IsMassTransitType(Type? type) =>
+        type?.Namespace?.StartsWith("MassTransit", StringComparison.Ordinal) ?? false;
 
     public new async Task DisposeAsync()
     {
