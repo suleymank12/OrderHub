@@ -16,6 +16,9 @@
     <PackageReference Include="Testcontainers.MsSql" />
     <!-- Consumer'ı broker'sız test etmek için MassTransit in-memory test harness (ApiTestFactory yok). -->
     <PackageReference Include="MassTransit" />
+    <!-- 3c-4: gerçek RabbitMQ broker üzerinden uçtan uca fidelity testi. -->
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
   </ItemGroup>
 
 </Project>
