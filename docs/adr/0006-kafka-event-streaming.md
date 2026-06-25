@@ -74,6 +74,28 @@ Bir domain olayı **N** integration olayına fan-out edebilmeli (OrderConfirmed 
 topolojide tanımlı ama §4.4 consumer'ı yalnız order events tüketir → şimdilik **boş** (YAGNI; audit consumer
 gelince doldurulur).
 
+### Karar 6 — Consumer-side idempotency = event-id dedup (Inbox ENTITY reuse) + offset-commit-after
+
+- **Eklendi:** 2026-06-25 (Faz 4 Adım 4c-3).
+
+AnalyticsService Kafka'yı at-least-once tüketir (manual offset commit) → re-delivery'de **duplicate işleme** olur;
+`DailyRevenueProjection` gelir artışı duplicate'te ikiye katlanmamalı. Çözüm: **producer outbox dedup'ının simetrik
+consumer tarafı** — event-id dedup.
+
+- **Dedup mekanizması:** OrderHub.Inbox'ın **`InboxMessage` ENTITY'si** (+ `IInboxDbContext` + `InboxMessageConfiguration`,
+  composite PK `(MessageId, MessageType)`) yeniden kullanılır. **`InboxConsumeFilter` (MassTransit) KULLANILMAZ** —
+  o consume-pipe filter'ı RabbitMQ/MassTransit'e bağlıdır; Kafka consumer manuel `(eventId, type)` kontrolü yapar.
+  `MessageId = IIntegrationEvent.Id` (= kaynak EventId, republish'te sabit); `MessageType = event CLR FullName`
+  (OrderCreated/Confirmed/Paid/Cancelled ayrı → karışmaz).
+- **Atomiklik:** projection değişikliği (+ revenue) **VE** `InboxMessage` kaydı **tek `SaveChanges`** (tek transaction).
+  Faz 3 inbox Karar 3 precedent'i: dedup kaydı + iş aynı commit'te → idempotency kopmaz. Composite PK = concurrency
+  backstop (Faz 3 Karar 5): yarış olursa ikinci insert reddedilir → retry → dedup görür → skip.
+- **Sıra:** ilk kez → apply + stamp → DB commit → **SONRA** offset commit (at-least-once). Duplicate → DB'ye dokunma,
+  **offset YİNE DE commit** (skip; consumer takılmaz). Crash (commit öncesi) → re-delivery → dedup → skip (kayıp yok, çift yok).
+- **Revenue ↔ dedup:** gelir artışı **dedup'a bağlı** (ilk kez = ekle), status-guard'a DEĞİL. İleri-only status-guard
+  (4c-2) out-of-order consistency için kalır; revenue korumasını **event-id dedup** yapar. → **offset + dedup tamamlayıcı**
+  (offset = kayıp yok, dedup = çift yok); redundant değil.
+
 ## Consequences
 
 - **Olumlu:** Faz 3 outbox yatırımı (atomiklik, retry, poison ayrımı) Kafka'ya bedavaya uzanır.

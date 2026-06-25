@@ -29,6 +29,18 @@ public sealed class DailyRevenueProjection
     /// <summary>Ortalama sipariş değeri (toplam gelir / sipariş sayısı).</summary>
     public decimal AvgOrderValue { get; private set; }
 
-    /// <summary>Belirli bir gün için sıfırlanmış gelir satırı üretir (ilk OrderPaid'de güncellenir, 4c-3).</summary>
+    /// <summary>Belirli bir gün için sıfırlanmış gelir satırı üretir (ilk OrderPaid'de güncellenir).</summary>
     public static DailyRevenueProjection Create(DateOnly date) => new(date);
+
+    /// <summary>
+    /// Ödenen bir siparişin tutarını o günün aggregate'ine ekler: sipariş sayısı +1, gelir += tutar, ortalama
+    /// yeniden hesaplanır. ★ İdempotency burada DEĞİL — consumer event-id dedup'ı duplicate OrderPaid'in bu
+    /// metoda hiç ulaşmamasını garanti eder (ADR-0006 consumer note); bu yüzden çağrıldıysa = ilk kez = ekle.
+    /// </summary>
+    public void AddPaidOrder(decimal amount)
+    {
+        TotalOrders++;
+        TotalRevenue += amount;
+        AvgOrderValue = TotalRevenue / TotalOrders;
+    }
 }

@@ -1,13 +1,16 @@
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OrderHub.AnalyticsService.Domain.Orders;
+using OrderHub.AnalyticsService.Domain.Revenue;
 using OrderHub.AnalyticsService.Infrastructure.Persistence;
 using OrderHub.Contracts.Orders;
 using OrderHub.EventBus.Kafka;
+using OrderHub.Inbox;
 
 namespace OrderHub.AnalyticsService.Infrastructure.Messaging;
 
@@ -79,15 +82,20 @@ internal sealed class OrderEventsConsumer(
             using var scope = scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
 
-            if (!await ApplyAsync(context, typeName, result.Message.Value, cancellationToken))
+            switch (await ProcessAsync(context, typeName, result.Message.Value, cancellationToken))
             {
-                OrderEventsLog.UnknownType(logger, typeName);
-                consumer.Commit(result); // bilinmeyen tip → skip.
-                return;
+                case ProcessOutcome.UnknownType:
+                    OrderEventsLog.UnknownType(logger, typeName);
+                    break;
+                case ProcessOutcome.AlreadyProcessed:
+                    OrderEventsLog.DuplicateSkipped(logger, typeName); // event-id dedup → projection/revenue'ya dokunma.
+                    break;
+                default: // Applied → projection + InboxMessage ATOMİK tek SaveChanges (Faz 3 inbox precedent'i).
+                    await context.SaveChangesAsync(cancellationToken); // 1) DB COMMIT
+                    break;
             }
 
-            await context.SaveChangesAsync(cancellationToken); // 1) DB COMMIT
-            consumer.Commit(result);                            // 2) ★ SONRA offset commit (at-least-once)
+            consumer.Commit(result); // 2) ★ DB'den SONRA offset commit; duplicate/unknown'da da ilerlet (skip → takılma yok).
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -108,13 +116,20 @@ internal sealed class OrderEventsConsumer(
         }
     }
 
-    // Tip header'a göre dispatch + projection apply. Bilinmeyen tip → false (skip). Deserialize fail → JsonException (poison).
-    private async Task<bool> ApplyAsync(
+    // Tip header'a göre dispatch + ★ event-id dedup + projection apply. Daha önce işlendiyse → AlreadyProcessed
+    // (projection/inbox'a DOKUNMA). İlk kez → apply + InboxMessage stamp (consumer tek SaveChanges'te ATOMİK commit
+    // eder). Bilinmeyen tip → UnknownType; deserialize fail → JsonException (poison, caller commit'ler).
+    private async Task<ProcessOutcome> ProcessAsync(
         AnalyticsDbContext context, string typeName, string json, CancellationToken cancellationToken)
     {
         if (typeName == CreatedType)
         {
             var integrationEvent = Deserialize<OrderCreatedIntegrationEvent>(json);
+            if (await IsDuplicateAsync(context, integrationEvent.Id, typeName, cancellationToken))
+            {
+                return ProcessOutcome.AlreadyProcessed;
+            }
+
             if (await context.OrderProjections.FindAsync([integrationEvent.OrderId], cancellationToken) is null)
             {
                 context.OrderProjections.Add(OrderProjection.Create(
@@ -122,38 +137,97 @@ internal sealed class OrderEventsConsumer(
                     integrationEvent.Currency, integrationEvent.OccurredOnUtc, integrationEvent.OccurredOnUtc));
             }
 
+            Stamp(context, integrationEvent.Id, typeName);
             OrderEventsLog.Applied(logger, typeName, integrationEvent.OrderId);
-            return true;
+            return ProcessOutcome.Applied;
         }
 
         if (typeName == ConfirmedType)
         {
             var integrationEvent = Deserialize<OrderConfirmedIntegrationEvent>(json);
+            if (await IsDuplicateAsync(context, integrationEvent.Id, typeName, cancellationToken))
+            {
+                return ProcessOutcome.AlreadyProcessed;
+            }
+
             await UpdateExistingAsync(
                 context, integrationEvent.OrderId, projection => projection.MarkConfirmed(integrationEvent.OccurredOnUtc),
                 typeName, cancellationToken);
-            return true;
+            Stamp(context, integrationEvent.Id, typeName);
+            return ProcessOutcome.Applied;
         }
 
         if (typeName == PaidType)
         {
             var integrationEvent = Deserialize<OrderPaidIntegrationEvent>(json);
-            await UpdateExistingAsync(
-                context, integrationEvent.OrderId, projection => projection.MarkPaid(integrationEvent.OccurredOnUtc),
-                typeName, cancellationToken);
-            return true;
+            if (await IsDuplicateAsync(context, integrationEvent.Id, typeName, cancellationToken))
+            {
+                return ProcessOutcome.AlreadyProcessed;
+            }
+
+            await ApplyPaidAsync(context, integrationEvent, typeName, cancellationToken);
+            Stamp(context, integrationEvent.Id, typeName);
+            return ProcessOutcome.Applied;
         }
 
         if (typeName == CancelledType)
         {
             var integrationEvent = Deserialize<OrderCancelledIntegrationEvent>(json);
+            if (await IsDuplicateAsync(context, integrationEvent.Id, typeName, cancellationToken))
+            {
+                return ProcessOutcome.AlreadyProcessed;
+            }
+
             await UpdateExistingAsync(
                 context, integrationEvent.OrderId, projection => projection.MarkCancelled(integrationEvent.OccurredOnUtc),
                 typeName, cancellationToken);
-            return true;
+            Stamp(context, integrationEvent.Id, typeName);
+            return ProcessOutcome.Applied;
         }
 
-        return false;
+        return ProcessOutcome.UnknownType;
+    }
+
+    // OrderPaid: status'u Paid'e geçir + ★ o günün gelirine siparişin total'ini ekle. Revenue idempotency'si
+    // DEDUP'tan gelir (bu metoda yalnız ilk kez ulaşılır) — MarkPaid status-guard'ına BAĞLI DEĞİL.
+    private async Task ApplyPaidAsync(
+        AnalyticsDbContext context, OrderPaidIntegrationEvent integrationEvent, string typeName, CancellationToken cancellationToken)
+    {
+        var projection = await context.OrderProjections.FindAsync([integrationEvent.OrderId], cancellationToken);
+        if (projection is null)
+        {
+            OrderEventsLog.ProjectionMissing(logger, typeName, integrationEvent.OrderId);
+            return; // anomali: total bilinmiyor → gelir eklenmez (InboxMessage yine stamp'lenir → idempotent).
+        }
+
+        projection.MarkPaid(integrationEvent.OccurredOnUtc);
+
+        // amount = OrderProjection.Total (Created/Confirmed set etti; ordering → Paid'de satır var).
+        var day = DateOnly.FromDateTime(integrationEvent.OccurredOnUtc);
+        var revenue = await context.DailyRevenueProjections.FindAsync([day], cancellationToken);
+        if (revenue is null)
+        {
+            revenue = DailyRevenueProjection.Create(day);
+            context.DailyRevenueProjections.Add(revenue);
+        }
+
+        revenue.AddPaidOrder(projection.Total);
+        OrderEventsLog.Applied(logger, typeName, integrationEvent.OrderId);
+    }
+
+    private static async Task<bool> IsDuplicateAsync(
+        AnalyticsDbContext context, Guid eventId, string typeName, CancellationToken cancellationToken) =>
+        await context.InboxMessages.AsNoTracking()
+            .AnyAsync(message => message.MessageId == eventId && message.MessageType == typeName, cancellationToken);
+
+    private static void Stamp(AnalyticsDbContext context, Guid eventId, string typeName) =>
+        context.InboxMessages.Add(InboxMessage.Create(eventId, typeName));
+
+    private enum ProcessOutcome
+    {
+        Applied,
+        AlreadyProcessed,
+        UnknownType,
     }
 
     private async Task UpdateExistingAsync(

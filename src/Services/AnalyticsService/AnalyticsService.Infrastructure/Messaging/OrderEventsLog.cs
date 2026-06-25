@@ -31,4 +31,8 @@ internal static partial class OrderEventsLog
     [LoggerMessage(EventId = 6005, Level = LogLevel.Error,
         Message = "Failed to process Kafka message '{MessageType}' at {Offset}; will retry (offset NOT committed)")]
     public static partial void ProcessFailed(ILogger logger, string messageType, string offset, Exception exception);
+
+    [LoggerMessage(EventId = 6006, Level = LogLevel.Debug,
+        Message = "Duplicate {MessageType} (event-id already processed); projection/revenue unchanged, offset committed")]
+    public static partial void DuplicateSkipped(ILogger logger, string messageType);
 }

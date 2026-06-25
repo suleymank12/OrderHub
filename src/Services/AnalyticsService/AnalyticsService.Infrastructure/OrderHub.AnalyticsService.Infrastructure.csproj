@@ -16,6 +16,9 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
     <!-- IKafkaEvent + KafkaMessageHeaders (type-header dispatch). EventBus, Confluent.Kafka'yı transitively getirir. -->
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- 4c-3: consumer-side idempotency için InboxMessage ENTITY'si + IInboxDbContext + config reuse (ADR-0006 consumer
+         note). InboxConsumeFilter (MassTransit) KULLANILMAZ — yalnız dedup tablosu (event-id). MassTransit transitive gelir. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
   </ItemGroup>
 
   <ItemGroup>

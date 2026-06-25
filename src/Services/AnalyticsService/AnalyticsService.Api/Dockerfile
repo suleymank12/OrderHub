@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage: Debian bookworm-slim (ICU içerir → SqlClient çalışır). Runtime patch'e pinli (8.0.11).
 # PaymentService Dockerfile pattern'iyle birebir. COPY listesi Analytics'in GERÇEK referanslarına göre
-# (Faz 3 stale-Dockerfile dersi): 4c-2'de Kafka consumer Contracts + EventBus building-block'larına ref verdi →
-# bunlar COPY listesine eklendi (Contracts → EventBus, başka building-block yok). Common ref edilmiyor.
+# (Faz 3 stale-Dockerfile dersi): 4c-2 Contracts + EventBus, 4c-3 Inbox (dedup entity reuse) ref edildi →
+# COPY listesine eklendi (Inbox/Contracts → EventBus; başka building-block yok). Common ref edilmiyor.
 
 # ---------- build ----------
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
@@ -14,6 +14,8 @@ COPY ["src/BuildingBlocks/OrderHub.EventBus/OrderHub.EventBus.csproj", "src/Buil
 COPY ["src/BuildingBlocks/OrderHub.EventBus/packages.lock.json", "src/BuildingBlocks/OrderHub.EventBus/"]
 COPY ["src/BuildingBlocks/OrderHub.Contracts/OrderHub.Contracts.csproj", "src/BuildingBlocks/OrderHub.Contracts/"]
 COPY ["src/BuildingBlocks/OrderHub.Contracts/packages.lock.json", "src/BuildingBlocks/OrderHub.Contracts/"]
+COPY ["src/BuildingBlocks/OrderHub.Inbox/OrderHub.Inbox.csproj", "src/BuildingBlocks/OrderHub.Inbox/"]
+COPY ["src/BuildingBlocks/OrderHub.Inbox/packages.lock.json", "src/BuildingBlocks/OrderHub.Inbox/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Domain/OrderHub.AnalyticsService.Domain.csproj", "src/Services/AnalyticsService/AnalyticsService.Domain/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Domain/packages.lock.json", "src/Services/AnalyticsService/AnalyticsService.Domain/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Infrastructure/OrderHub.AnalyticsService.Infrastructure.csproj", "src/Services/AnalyticsService/AnalyticsService.Infrastructure/"]
