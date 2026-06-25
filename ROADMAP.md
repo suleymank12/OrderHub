@@ -169,44 +169,44 @@ Faz 7: Docs + CI           → README + ADR + diagrams + GitHub Actions
 
 ## 3.1 BuildingBlocks/OrderHub.EventBus
 
-- [ ] `IIntegrationEvent` interface (`Guid Id`, `DateTime OccurredOn`)
-- [ ] `IIntegrationEventPublisher` interface (Application'dan kullanılır)
-- [ ] MassTransit ile RabbitMQ wrapper
+- [x] `IIntegrationEvent` interface (`Guid Id`, `DateTime OccurredOn`)
+- [x] `IIntegrationEventPublisher` interface (Application'dan kullanılır)
+- [x] MassTransit ile RabbitMQ wrapper
 
 ## 3.2 BuildingBlocks/OrderHub.Outbox
 
-- [ ] `OutboxMessage` entity (id, type, payload, occurred_on, processed_on, retry_count, error)
-- [ ] `OutboxInterceptor` (EF Core `SaveChangesInterceptor`) — domain event'leri tespit edip outbox'a yazar, **aynı transaction içinde**
-- [ ] `OutboxProcessorService` (HostedService) — outbox'ı polling ile okur, MassTransit ile publish eder, başarılıysa `processed_on` set eder
-- [ ] Polling interval konfigürasyon (default 2 sn)
-- [ ] Retry policy + DLQ (max 5 retry → manual intervention)
-- [ ] **Idempotency:** outbox'a aynı `Id` iki kez yazılamaz (unique index)
+- [x] `OutboxMessage` entity (id, type, payload, occurred_on, processed_on, retry_count, error)
+- [x] `OutboxInterceptor` (EF Core `SaveChangesInterceptor`) — domain event'leri tespit edip outbox'a yazar, **aynı transaction içinde**
+- [x] `OutboxProcessorService` (HostedService) — outbox'ı polling ile okur, MassTransit ile publish eder, başarılıysa `processed_on` set eder
+- [x] Polling interval konfigürasyon (default 2 sn)
+- [x] Retry policy + DLQ (max 5 retry → manual intervention)
+- [x] **Idempotency:** outbox'a aynı `Id` iki kez yazılamaz (unique index)
 
 > ⚠️ **Senior note:** Outbox **ZORUNLU**. RabbitMQ'ya direkt publish + DB commit ardışık yapılırsa, ikinci adım fail olursa event kaybolur veya duplicate olur. Outbox bunu çözer. Bu pattern atlanamaz.
 
 ## 3.3 PaymentService — yeni servis
 
-- [ ] Aynı Clean Architecture yapısı (4 katman)
-- [ ] `Payment` aggregate: `Id`, `OrderId`, `Amount`, `Status`, `ExternalTransactionId`
-- [ ] Mock payment provider (random success/failure, configurable %)
-- [ ] Kendi DB'si: `OrderHub_Payment` (database-per-service)
-- [ ] Outbox setup (aynı pattern)
+- [x] Aynı Clean Architecture yapısı (4 katman)
+- [x] `Payment` aggregate: `Id`, `OrderId`, `Amount`, `Status`, `ExternalTransactionId`
+- [x] Mock payment provider (random success/failure, configurable %)
+- [x] Kendi DB'si: `OrderHub_Payment` (database-per-service)
+- [x] Outbox setup (aynı pattern)
 
 ## 3.4 Command flow — Order → Payment
 
-- [ ] OrderService: `Order.Confirm()` çağrıldığında → `ProcessPaymentIntegrationEvent` outbox'a yazılır → RabbitMQ'ya publish edilir
-- [ ] MassTransit topology:
+- [x] OrderService: `Order.Confirm()` çağrıldığında → `ProcessPaymentIntegrationEvent` outbox'a yazılır → RabbitMQ'ya publish edilir
+- [x] MassTransit topology:
   - Exchange: `order-hub.payment` (type: direct veya topic, karar ADR'de)
   - Queue: `payment-service.process-payment`
   - Routing key: `payment.process`
-- [ ] PaymentService: `ProcessPaymentIntegrationEventConsumer` — payment'ı işler, sonucu kendi event'i ile yayımlar (`PaymentSucceededIntegrationEvent` veya `PaymentFailedIntegrationEvent`)
-- [ ] OrderService: `PaymentSucceededIntegrationEventConsumer` — order'ı `Paid`'e geçirir; `PaymentFailedIntegrationEventConsumer` — order'ı `Cancelled`'a geçirir
+- [x] PaymentService: `ProcessPaymentIntegrationEventConsumer` — payment'ı işler, sonucu kendi event'i ile yayımlar (`PaymentSucceededIntegrationEvent` veya `PaymentFailedIntegrationEvent`)
+- [x] OrderService: `PaymentSucceededIntegrationEventConsumer` — order'ı `Paid`'e geçirir; `PaymentFailedIntegrationEventConsumer` — order'ı `Cancelled`'a geçirir
 
 ## 3.5 Retry + DLQ
 
-- [ ] MassTransit retry policy: exponential backoff, max 5 deneme
-- [ ] DLQ: `_error` suffix queue'ları (MassTransit default)
-- [ ] **Idempotent consumer:** her consumer mesaj id'sini bir tabloda tutar, aynı id ikinci kez işlenmez (Inbox pattern). Bu **ZORUNLU**.
+- [x] MassTransit retry policy: exponential backoff, max 5 deneme
+- [x] DLQ: `_error` suffix queue'ları (MassTransit default)
+- [x] **Idempotent consumer:** her consumer mesaj id'sini bir tabloda tutar, aynı id ikinci kez işlenmez (Inbox pattern). Bu **ZORUNLU**.
 
 ## 3.6 docker-compose güncelleme
 
@@ -216,9 +216,9 @@ Faz 7: Docs + CI           → README + ADR + diagrams + GitHub Actions
 
 ## 3.7 Testler
 
-- [ ] Unit: Outbox interceptor → domain event detection, payload serialization
-- [ ] Unit: Inbox consumer → duplicate message handling
-- [ ] Integration (Testcontainers + RabbitMQ container):
+- [x] Unit: Outbox interceptor → domain event detection, payload serialization
+- [x] Unit: Inbox consumer → duplicate message handling
+- [x] Integration (Testcontainers + RabbitMQ container):
   - Order confirm → Payment processed → Order paid (happy path)
   - Order confirm → Payment fails → Order cancelled (compensation)
   - Duplicate message → idempotent skip
