@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.AnalyticsService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.AnalyticsService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- AnalyticsDbContext internal (§9); yalnızca integration test assembly'sine açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.AnalyticsService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyticsService.Domain\OrderHub.AnalyticsService.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- 4c-1 iskelet: yalnız read-model persistence. Kafka consumer (Contracts + EventBus.Kafka) 4c-2'de;
+       Outbox/Inbox/MassTransit YOK (Analytics terminal consumer, event üretmez). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: yalnız migration üretimi; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

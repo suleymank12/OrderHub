@@ -43,6 +43,8 @@
     <!-- ConfigurationBinder.Get<T>(): Infrastructure composition root'ta RabbitMqOptions'ı config'ten bağlar
          (Abstractions Get<T> içermez). -->
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+    <!-- IConfiguration + GetConnectionString (Infrastructure DI); abstraction-only (provider Api'de). -->
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Background Jobs (Hangfire)">

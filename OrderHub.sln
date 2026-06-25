@@ -55,6 +55,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.Inbox.UnitTests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.EventBus.UnitTests", "tests\OrderHub.EventBus.UnitTests\OrderHub.EventBus.UnitTests.csproj", "{3CACDB9E-03A9-4C0C-BE27-F4284DF8F87D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AnalyticsService", "AnalyticsService", "{7D0D486B-0440-457F-9130-BC18384324DE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.AnalyticsService.Domain", "src\Services\AnalyticsService\AnalyticsService.Domain\OrderHub.AnalyticsService.Domain.csproj", "{3731E424-3025-4402-88EB-A48D3964F732}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.AnalyticsService.Infrastructure", "src\Services\AnalyticsService\AnalyticsService.Infrastructure\OrderHub.AnalyticsService.Infrastructure.csproj", "{AA8982DC-4686-424F-9E97-E576FDA1927E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.AnalyticsService.Api", "src\Services\AnalyticsService\AnalyticsService.Api\OrderHub.AnalyticsService.Api.csproj", "{42C11F3B-7C3E-4F41-A362-E0A553E62198}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.AnalyticsService.IntegrationTests", "tests\AnalyticsService.IntegrationTests\OrderHub.AnalyticsService.IntegrationTests.csproj", "{F109E41E-0C62-4F37-A9B0-FBC89DD2783D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -144,6 +154,22 @@ Global
 		{3CACDB9E-03A9-4C0C-BE27-F4284DF8F87D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3CACDB9E-03A9-4C0C-BE27-F4284DF8F87D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3CACDB9E-03A9-4C0C-BE27-F4284DF8F87D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3731E424-3025-4402-88EB-A48D3964F732}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3731E424-3025-4402-88EB-A48D3964F732}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3731E424-3025-4402-88EB-A48D3964F732}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3731E424-3025-4402-88EB-A48D3964F732}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA8982DC-4686-424F-9E97-E576FDA1927E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA8982DC-4686-424F-9E97-E576FDA1927E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA8982DC-4686-424F-9E97-E576FDA1927E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA8982DC-4686-424F-9E97-E576FDA1927E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42C11F3B-7C3E-4F41-A362-E0A553E62198}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42C11F3B-7C3E-4F41-A362-E0A553E62198}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42C11F3B-7C3E-4F41-A362-E0A553E62198}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42C11F3B-7C3E-4F41-A362-E0A553E62198}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F109E41E-0C62-4F37-A9B0-FBC89DD2783D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F109E41E-0C62-4F37-A9B0-FBC89DD2783D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F109E41E-0C62-4F37-A9B0-FBC89DD2783D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F109E41E-0C62-4F37-A9B0-FBC89DD2783D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A326A5EC-9671-4D6D-8B8B-503E6D146E7A} = {81B9C654-3B5F-4587-B481-8B3379AF0617}
@@ -170,5 +196,10 @@ Global
 		{036E6ACB-D394-4BFA-9F85-866AAA80CEFB} = {A326A5EC-9671-4D6D-8B8B-503E6D146E7A}
 		{D05346B4-E8B2-4A95-A54F-1851CA0ACEA1} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 		{3CACDB9E-03A9-4C0C-BE27-F4284DF8F87D} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
+		{7D0D486B-0440-457F-9130-BC18384324DE} = {3051D7F1-28A4-4C08-A690-3A31023E6C64}
+		{3731E424-3025-4402-88EB-A48D3964F732} = {7D0D486B-0440-457F-9130-BC18384324DE}
+		{AA8982DC-4686-424F-9E97-E576FDA1927E} = {7D0D486B-0440-457F-9130-BC18384324DE}
+		{42C11F3B-7C3E-4F41-A362-E0A553E62198} = {7D0D486B-0440-457F-9130-BC18384324DE}
+		{F109E41E-0C62-4F37-A9B0-FBC89DD2783D} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 	EndGlobalSection
 EndGlobal

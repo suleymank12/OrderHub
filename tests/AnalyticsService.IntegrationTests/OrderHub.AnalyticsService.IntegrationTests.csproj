@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.AnalyticsService.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.AnalyticsService.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\AnalyticsService\AnalyticsService.Api\OrderHub.AnalyticsService.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\AnalyticsService\AnalyticsService.Infrastructure\OrderHub.AnalyticsService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar (4c-1: yalnız SQL; Kafka 4c-2). -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.MsSql" />
+  </ItemGroup>
+
+</Project>
