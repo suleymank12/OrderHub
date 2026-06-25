@@ -14,6 +14,11 @@ COPY ["src/BuildingBlocks/OrderHub.EventBus/OrderHub.EventBus.csproj", "src/Buil
 COPY ["src/BuildingBlocks/OrderHub.EventBus/packages.lock.json", "src/BuildingBlocks/OrderHub.EventBus/"]
 COPY ["src/BuildingBlocks/OrderHub.Outbox/OrderHub.Outbox.csproj", "src/BuildingBlocks/OrderHub.Outbox/"]
 COPY ["src/BuildingBlocks/OrderHub.Outbox/packages.lock.json", "src/BuildingBlocks/OrderHub.Outbox/"]
+# Faz 3 Inbox + Contracts: Infrastructure bunlara da referans verir (consume filter + integration event'ler) → locked-mode için şart.
+COPY ["src/BuildingBlocks/OrderHub.Contracts/OrderHub.Contracts.csproj", "src/BuildingBlocks/OrderHub.Contracts/"]
+COPY ["src/BuildingBlocks/OrderHub.Contracts/packages.lock.json", "src/BuildingBlocks/OrderHub.Contracts/"]
+COPY ["src/BuildingBlocks/OrderHub.Inbox/OrderHub.Inbox.csproj", "src/BuildingBlocks/OrderHub.Inbox/"]
+COPY ["src/BuildingBlocks/OrderHub.Inbox/packages.lock.json", "src/BuildingBlocks/OrderHub.Inbox/"]
 COPY ["src/Services/PaymentService/PaymentService.Domain/OrderHub.PaymentService.Domain.csproj", "src/Services/PaymentService/PaymentService.Domain/"]
 COPY ["src/Services/PaymentService/PaymentService.Domain/packages.lock.json", "src/Services/PaymentService/PaymentService.Domain/"]
 COPY ["src/Services/PaymentService/PaymentService.Application/OrderHub.PaymentService.Application.csproj", "src/Services/PaymentService/PaymentService.Application/"]

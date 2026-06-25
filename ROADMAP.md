@@ -210,9 +210,9 @@ Faz 7: Docs + CI           → README + ADR + diagrams + GitHub Actions
 
 ## 3.6 docker-compose güncelleme
 
-- [ ] `rabbitmq:3.13-management` servisi (management UI 15672'de)
-- [ ] `paymentservice` build
-- [ ] Healthcheck'ler
+- [x] `rabbitmq:3.13-management` servisi (management UI 15672'de)
+- [x] `paymentservice` build
+- [x] Healthcheck'ler
 
 ## 3.7 Testler
 
