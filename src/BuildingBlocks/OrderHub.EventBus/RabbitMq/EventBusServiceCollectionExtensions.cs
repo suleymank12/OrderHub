@@ -38,7 +38,16 @@ public static class EventBusServiceCollectionExtensions
                     host.Password(options.Password);
                 });
 
-                // Consume-pipe filter'ları (inbox dedup vb.) endpoint'lerden ÖNCE → tüm consumer'lara uygulanır.
+                // ★ Retry EN DIŞTA (ROADMAP §3.5): consume-pipe spec'leri ekleme sırasıyla uygulanır, ilk eklenen
+                // en dış. Retry'ı inbox filter'dan ÖNCE eklemek → retry → [her denemede] inbox filter → consumer.
+                // Transient hata → tüm consume (inbox tracked-Add dahil) SaveChanges'siz rollback → satır yok →
+                // retry temiz tekrar dener; başarı → atomik commit → satır var → redelivery skip (ADR-0005 Karar 4).
+                // Tükenince mesaj MassTransit convention'ı ile <queue>_error queue'ya (DLQ) düşer — ekstra kod yok.
+                var retry = options.Retry;
+                rabbit.UseMessageRetry(r => r.Exponential(
+                    retry.RetryLimit, retry.MinInterval, retry.MaxInterval, retry.IntervalDelta));
+
+                // Consume-pipe filter'ları (inbox dedup vb.) retry'dan SONRA, endpoint'lerden ÖNCE → retry bunları sarar.
                 configureConsumePipe?.Invoke(rabbit, context);
 
                 // Kayıtlı consumer endpoint'lerini convention ile bağlar (sade topology).

@@ -21,4 +21,10 @@ public sealed record RabbitMqOptions
 
     /// <summary>Parola (prod'da env'den; repo'da gerçek değer tutulmaz).</summary>
     public string Password { get; init; } = "guest";
+
+    /// <summary>
+    /// Consumer-side retry policy (ROADMAP §3.5). Varsayılan = production değerleri; testler kısa interval ile
+    /// override eder (gerçek pipe sırasını çalıştırıp exponential beklemeyi ms'ye düşürmek için).
+    /// </summary>
+    public RabbitMqRetryOptions Retry { get; init; } = new();
 }

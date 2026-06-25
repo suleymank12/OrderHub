@@ -113,6 +113,34 @@ convention'ı ile otomatik queue'ya bağlanır.
   command-only direct-routing gerekirse (örn. competing-consumer load balancing dışı bir neden) ayrı bir
   karar olarak revize edilir. Faz 4'te event-stream zaten Kafka'ya gider (RabbitMQ command-only kalır).
 
+## Implementation Note — Retry Policy + `_error` DLQ (3d-3)
+
+- **Eklendi:** 2026-06-25 (Faz 3 Adım 3d-3).
+
+Karar 1 retry/DLQ'yu "MassTransit'te konfigürasyon" diye gerekçelendirmişti; bu not somut yapılandırmayı kayda
+geçirir. 3d öncesi `AddRabbitMqEventBus` retry **içermiyordu** → MassTransit default 0 retry → faulted mesaj
+direkt `_error`'a düşüyordu (§3.5 exponential/max-5 yapılandırılmamış).
+
+- **Bus-level, EN DIŞTA:** `UsingRabbitMq` içinde `rabbit.UseMessageRetry(r => r.Exponential(...))`, inbox
+  consume filter'ından **önce** eklenir. MassTransit consume-pipe spec'leri ekleme sırasıyla uygulanır (ilk =
+  en dış) → sıra: **retry → [her denemede] inbox filter → consumer**. Bus-level seçimi: hem retry hem inbox
+  aynı pipe'ta deterministik sırada kalır (endpoint-level olsa göreli sıra muğlaklaşırdı) + tek noktadan tüm
+  consumer'lara uygulanır.
+- **Inbox ile etkileşim (ADR-0005 Karar 4 ile tutarlı):** retry en dışta olduğundan her deneme **yeni
+  consume-scope** (yeni DbContext) alır. Transient hata → consumer `SaveChanges`'e ulaşmadan throw → inbox
+  filter'ın tracked-Add'i rollback → satır yok → retry **temiz** tekrar dener. Başarı → atomik commit → satır
+  var → sonraki redelivery skip. (3d-3 testi bunu kanıtlar: 6 consume = inbox hiç skip etmedi + commit edilmiş
+  satır yok.)
+- **Exponential parametreleri:** `RetryLimit=5` (§3.5), `MinInterval=1s`, `MaxInterval=30s`, `IntervalDelta=2s`.
+  Transient kesinti (broker reconnection, kısa DB kilidi) için yeterli pencere; üst sınır 30s ile retry storm
+  ve queue tıkanması engellenir. Worst-case ~1+3+7+15+30 ≈ 56s sonra DLQ.
+- **`_error` DLQ = otomatik:** retry tükenince MassTransit mesajı `<queue>_error`'a taşır (convention) +
+  `Fault<T>` publish eder. Ekstra DLQ kodu **yazılmaz** (K2). 3d-3 testi mesajı gerçek `_error` queue'dan okuyarak doğrular.
+- **API kararı (config, hardcode değil):** policy `RabbitMqOptions.Retry` (`RabbitMqRetryOptions`) üzerinden
+  gelir; varsayılanlar = production değerleri. Gerekçe: tek policy kaynağı + env-tunable (retry sayısı/interval
+  secret değil ama ortama göre ayarlanabilir) + test edilebilirlik (gerçek-broker testi aynı pipe sırasını
+  çalıştırıp interval'i ms'ye düşürür; reimplementation değil, prod kod yolu doğrulanır).
+
 ## Alternatives Considered
 
 ### Seçenek A: Raw `RabbitMQ.Client`
