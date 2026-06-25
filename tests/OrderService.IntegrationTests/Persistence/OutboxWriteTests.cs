@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using OrderHub.Contracts.Orders;
 using OrderHub.Contracts.Payments;
 using OrderHub.OrderService.Application.Abstractions.Messaging;
 using OrderHub.OrderService.Domain.Orders.Events;
@@ -32,7 +33,7 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
     private static readonly JsonSerializerOptions PayloadOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public async Task SaveChanges_OrderConfirmed_WritesSingleProcessPaymentOutboxMessage()
+    public async Task SaveChanges_OrderConfirmed_FansOutToProcessPaymentAndOrderConfirmedKafkaEvent()
     {
         var publisherMock = LoosePublisher();
 
@@ -44,21 +45,28 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
         var order = OrderTestData.NewOrder();
         order.Confirm();
         // EventId'yi SAVE'den ÖNCE yakala: dispatcher post-commit DomainEvents'i temizler.
-        var expectedEventId = order.DomainEvents.OfType<OrderConfirmed>().Single().EventId;
+        var confirmedEventId = order.DomainEvents.OfType<OrderConfirmed>().Single().EventId;
 
         context.Orders.Add(order);
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
 
-        // OrderCreated registry'de YOK + OrderConfirmed VAR → tam 1 satır.
-        var messages = await context.OutboxMessages.ToListAsync();
-        var message = messages.Should().ContainSingle().Which;
-        message.Id.Should().Be(expectedEventId, "Id = kaynak EventId (uçtan uca dedup)");
-        message.Type.Should().Be(typeof(ProcessPaymentIntegrationEvent).AssemblyQualifiedName);
-        message.ProcessedOnUtc.Should().BeNull("henüz publish edilmedi (write-only)");
-        message.RetryCount.Should().Be(0);
+        // OrderConfirmed → 1:N fan-out (ADR-0006): ProcessPayment (RabbitMQ, Ordinal 0) + OrderConfirmed Kafka
+        // (Ordinal 1); ikisi de Id == OrderConfirmed.EventId (composite PK (Id, Ordinal) ayırır).
+        var confirmedRows = await context.OutboxMessages
+            .Where(message => message.Id == confirmedEventId)
+            .OrderBy(message => message.Ordinal)
+            .ToListAsync();
 
-        var payload = JsonSerializer.Deserialize<ProcessPaymentIntegrationEvent>(message.Payload, PayloadOptions);
+        confirmedRows.Should().HaveCount(2);
+        confirmedRows[0].Ordinal.Should().Be(0);
+        confirmedRows[0].Type.Should().Be(typeof(ProcessPaymentIntegrationEvent).AssemblyQualifiedName);
+        confirmedRows[1].Ordinal.Should().Be(1);
+        confirmedRows[1].Type.Should().Be(typeof(OrderConfirmedIntegrationEvent).AssemblyQualifiedName);
+        confirmedRows.Should().OnlyContain(r =>
+            r.Id == confirmedEventId && r.ProcessedOnUtc == null && r.RetryCount == 0);
+
+        var payload = JsonSerializer.Deserialize<ProcessPaymentIntegrationEvent>(confirmedRows[0].Payload, PayloadOptions);
         payload.Should().NotBeNull();
         payload!.OrderId.Should().Be(order.Id);
         payload.CustomerId.Should().Be(order.CustomerId);
@@ -94,9 +102,9 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
             context.Orders.Add(order);
             await context.SaveChangesAsync();
 
-            // Aynı transaction içinde her ikisi de görünür (atomik yazıldı).
+            // Aynı transaction içinde her ikisi de görünür (atomik yazıldı). OrderConfirmed → 1:N (2 outbox satırı).
             (await context.Orders.CountAsync(o => o.Id == orderId)).Should().Be(1);
-            (await context.OutboxMessages.CountAsync(m => m.Id == eventId)).Should().Be(1);
+            (await context.OutboxMessages.CountAsync(m => m.Id == eventId)).Should().Be(2);
 
             // transaction commit EDİLMEZ → dispose rollback eder.
         }
@@ -144,8 +152,11 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
     }
 
     [Fact]
-    public async Task SaveChanges_OrderCreatedUnmapped_WritesNoOutbox_ButInProcessDispatchStillRuns()
+    public async Task SaveChanges_OrderCreated_WritesKafkaOutbox_AndInProcessDispatchStillRuns()
     {
+        // ★ Clear-invariant (ADR-0002 Karar 2) Faz 4'te: OrderCreated artık HEM outbox'a (Kafka, ADR-0006) HEM
+        // in-process'e (Hangfire/MediatR) gider. Pre-commit outbox READ-ONLY (clear etmez); post-commit dispatcher
+        // hâlâ publish+clear eder → Faz 2 OrderCreated→Hangfire zinciri BOZULMAZ.
         var publisherMock = LoosePublisher();
 
         await using var provider = BuildProvider(publisherMock.Object);
@@ -153,15 +164,18 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
         await using var transaction = await context.Database.BeginTransactionAsync();
 
-        var order = OrderTestData.NewOrder(); // yalnızca OrderCreated (registry'de YOK).
-        order.DomainEvents.OfType<OrderCreated>().Should().ContainSingle();
+        var order = OrderTestData.NewOrder(); // yalnızca OrderCreated.
+        var createdEventId = order.DomainEvents.OfType<OrderCreated>().Single().EventId;
 
         context.Orders.Add(order);
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
 
-        // 1) Outbox boş: OrderCreated registry'de olmadığından hiçbir satır yazılmadı.
-        (await context.OutboxMessages.CountAsync()).Should().Be(0);
+        // 1) Outbox: OrderCreated → tam 1 satır (OrderCreatedIntegrationEvent, Kafka), Id == EventId.
+        var rows = await context.OutboxMessages.Where(m => m.Id == createdEventId).ToListAsync();
+        var row = rows.Should().ContainSingle().Which;
+        row.Type.Should().Be(typeof(OrderCreatedIntegrationEvent).AssemblyQualifiedName);
+        row.Ordinal.Should().Be(0);
 
         // 2) In-process dispatch ÇALIŞTI: DispatchDomainEventsInterceptor OrderCreated'ı publish etti (Faz 2 zinciri sağ).
         publisherMock.Verify(
@@ -169,7 +183,7 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
                 It.Is<INotification>(n => (n as DomainEventNotification<OrderCreated>) != null),
                 It.IsAny<CancellationToken>()),
             Times.Once,
-            "Faz 2 in-process dispatch kırılmamalı");
+            "Faz 2 in-process dispatch (OrderCreated → Hangfire) kırılmamalı");
 
         // 3) Domain event'ler temizlendi → pre-commit outbox DEĞİL, post-commit dispatcher clear etti.
         order.DomainEvents.Should().BeEmpty();

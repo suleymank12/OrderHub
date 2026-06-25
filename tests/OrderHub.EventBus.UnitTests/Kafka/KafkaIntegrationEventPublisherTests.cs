@@ -1,3 +1,4 @@
+using System.Text;
 using Confluent.Kafka;
 using Moq;
 using OrderHub.EventBus.Kafka;
@@ -33,6 +34,10 @@ public sealed class KafkaIntegrationEventPublisherTests
         capturedMessage.Should().NotBeNull();
         capturedMessage!.Key.Should().Be(orderId.ToString(), "partition key = OrderId (§4.2 ordering)");
         capturedMessage.Value.Should().Contain(orderId.ToString(), "value = somut event JSON'u");
+
+        // Tip header'da → consumer dispatch anahtarı (value JSON tip taşımaz).
+        var typeHeader = Encoding.UTF8.GetString(capturedMessage.Headers.GetLastBytes(KafkaMessageHeaders.MessageType));
+        typeHeader.Should().Be(typeof(OrderEventStub).FullName);
     }
 
     [Fact]

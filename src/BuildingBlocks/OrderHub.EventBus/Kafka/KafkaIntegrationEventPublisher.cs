@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 
@@ -26,7 +27,16 @@ internal sealed class KafkaIntegrationEventPublisher(IProducer<string, string> p
         }
 
         var payload = JsonSerializer.Serialize(integrationEvent, integrationEvent.GetType(), SerializerOptions);
-        var message = new Message<string, string> { Key = kafkaEvent.PartitionKey, Value = payload };
+        var message = new Message<string, string>
+        {
+            Key = kafkaEvent.PartitionKey,
+            Value = payload,
+            // Tip header'da (value JSON şema taşımaz, schema registry yok) → consumer dispatch anahtarı.
+            Headers = new Headers
+            {
+                { KafkaMessageHeaders.MessageType, Encoding.UTF8.GetBytes(integrationEvent.GetType().FullName!) },
+            },
+        };
 
         await producer.ProduceAsync(kafkaEvent.Topic, message, cancellationToken);
     }

@@ -28,9 +28,9 @@ public static class KafkaEventBusServiceCollectionExtensions
 
         // RabbitMQ (mevcut MassTransit) + Kafka publisher'ları keyed; routing = görünür IIntegrationEventPublisher (last-wins).
         services.AddKeyedScoped<IIntegrationEventPublisher, MassTransitIntegrationEventPublisher>(
-            RoutingIntegrationEventPublisher.RabbitMqKey);
+            EventBusPublisherKeys.RabbitMq);
         services.AddKeyedScoped<IIntegrationEventPublisher, KafkaIntegrationEventPublisher>(
-            RoutingIntegrationEventPublisher.KafkaKey);
+            EventBusPublisherKeys.Kafka);
         services.AddScoped<IIntegrationEventPublisher, RoutingIntegrationEventPublisher>();
 
         return services;

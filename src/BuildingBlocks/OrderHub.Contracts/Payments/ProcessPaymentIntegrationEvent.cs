@@ -13,7 +13,7 @@ namespace OrderHub.Contracts.Payments;
 /// <c>required</c> üyeler tüm alanların construction'da set edilmesini derleme-zamanı zorlar (eksik alan yok).
 /// </para>
 /// </summary>
-public sealed record ProcessPaymentIntegrationEvent : IIntegrationEvent
+public sealed record ProcessPaymentIntegrationEvent : IRabbitMqEvent
 {
     /// <summary>Olay kimliği = kaynak <c>OrderConfirmed.EventId</c> (dedup anahtarı).</summary>
     public required Guid Id { get; init; }

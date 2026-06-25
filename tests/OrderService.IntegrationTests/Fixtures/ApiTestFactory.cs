@@ -1,10 +1,13 @@
+using Confluent.Kafka;
 using MassTransit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Moq;
 using OrderHub.OrderService.Infrastructure.Persistence;
 using Testcontainers.MsSql;
 
@@ -66,6 +69,16 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>, IAsyncLifet
         {
             RemoveMassTransitRegistrations(services);
             services.AddMassTransitTestHarness();
+
+            // Faz 4: routing publisher Kafka'ya da gidebilir (OrderCreated → Kafka outbox satırı). Api testlerinde
+            // gerçek Kafka broker yok → IProducer'ı no-op mock'la → processor publish'i bağlanmaya çalışmaz, success döner.
+            services.RemoveAll<IProducer<string, string>>();
+            var kafkaProducer = new Mock<IProducer<string, string>>();
+            kafkaProducer
+                .Setup(p => p.ProduceAsync(
+                    It.IsAny<string>(), It.IsAny<Message<string, string>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DeliveryResult<string, string>());
+            services.AddSingleton(kafkaProducer.Object);
         });
     }
 

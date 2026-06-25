@@ -11,7 +11,7 @@ namespace OrderHub.Contracts.Payments;
 /// Yalnızca primitive alanlar — <c>Money</c>/domain tipi sızdırılmaz (servisler birbirinin domain'ine bağlanmaz).
 /// </para>
 /// </summary>
-public sealed record PaymentSucceededIntegrationEvent : IIntegrationEvent
+public sealed record PaymentSucceededIntegrationEvent : IRabbitMqEvent
 {
     /// <summary>Olay kimliği = kaynak <c>PaymentSucceeded.EventId</c> (dedup anahtarı).</summary>
     public required Guid Id { get; init; }
