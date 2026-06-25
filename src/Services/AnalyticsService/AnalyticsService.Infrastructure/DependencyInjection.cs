@@ -2,6 +2,7 @@ using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OrderHub.AnalyticsService.Application.Abstractions.Persistence;
 using OrderHub.AnalyticsService.Infrastructure.Messaging;
 using OrderHub.AnalyticsService.Infrastructure.Persistence;
 
@@ -34,6 +35,10 @@ public static class DependencyInjection
         }
 
         services.AddDbContext<AnalyticsDbContext>(options => options.UseSqlServer(connectionString));
+
+        // Read-side port (4d): query handler'lar bu abstraction üzerinden projection okur (Clean Arch — Application
+        // DbContext'i bilmez). Scoped: DbContext ile aynı yaşam döngüsü.
+        services.AddScoped<IAnalyticsReadRepository, AnalyticsReadRepository>();
 
         // Kafka consumer (ROADMAP §4.4): sabit group + earliest (birikmiş event'leri işle) + manual commit (commit-after).
         var bootstrapServers = configuration[KafkaBootstrapServersKey] ?? DefaultKafkaBootstrapServers;

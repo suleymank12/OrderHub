@@ -1,9 +1,11 @@
+using OrderHub.AnalyticsService.Api.ExceptionHandling;
+
 namespace OrderHub.AnalyticsService.Api.Extensions;
 
 /// <summary>
-/// Api-seviyesi cross-cutting servis kayıtları: ProblemDetails, health check'ler ve (dev) CORS.
-/// 4c-1 iskelet: özel <c>IExceptionHandler</c> YOK — <c>UseExceptionHandler()</c> + <c>AddProblemDetails()</c>
-/// default ProblemDetails davranışını kullanır (endpoint/validation-özgü mapping query'lerle birlikte 4d'de).
+/// Api-seviyesi cross-cutting servis kayıtları: ProblemDetails, global exception handler, health check'ler ve
+/// (dev) CORS. 4d: <see cref="GlobalExceptionHandler"/> ValidationBehavior'dan gelen
+/// <see cref="FluentValidation.ValidationException"/>'ı 400'e map'ler (ters tarih aralığı vb.).
 /// </summary>
 internal static class ApiServicesExtensions
 {
@@ -12,7 +14,9 @@ internal static class ApiServicesExtensions
 
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddProblemDetails(); // RFC 7807 — UseExceptionHandler default handler bunu kullanır.
+        // RFC 7807 ProblemDetails + global exception → ProblemDetails çevirici.
+        services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
 
         // /health/ready için DB check (SELECT 1). Connection string eksikse check unhealthy döner (startup'ı çökertmez).
         var connectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;

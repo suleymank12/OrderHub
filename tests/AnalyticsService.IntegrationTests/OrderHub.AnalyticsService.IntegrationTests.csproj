@@ -17,6 +17,9 @@
     <!-- 4c-2: gerçek Kafka container'a order event'leri produce edip consumer'ı doğrulamak için. -->
     <PackageReference Include="Confluent.Kafka" />
     <PackageReference Include="Testcontainers.Kafka" />
+    <!-- 4d: read-only Api'yi in-process host'lamak (AnalyticsApiTestFactory). JWT üretimi için
+         System.IdentityModel.Tokens.Jwt + Microsoft.IdentityModel.Tokens, Api → JwtBearer ile transitive gelir. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
 </Project>

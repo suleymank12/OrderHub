@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.AnalyticsService.Application</AssemblyName>
+    <RootNamespace>OrderHub.AnalyticsService.Application</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Handler/behavior'lar internal (§9); yalnızca test ve Infrastructure'a açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.AnalyticsService.UnitTests" />
+    <InternalsVisibleTo Include="OrderHub.AnalyticsService.Infrastructure" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Application yalnız Domain'e bağlıdır (read-model'ler domain tipi). Infrastructure'a ASLA (Clean Arch). -->
+    <ProjectReference Include="..\AnalyticsService.Domain\OrderHub.AnalyticsService.Domain.csproj" />
+    <!-- Result/Error (read-side 404 → Result.Failure). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Common\OrderHub.Common.csproj" />
+  </ItemGroup>
+
+  <!-- Versiyonlar kök Directory.Packages.props'ta (CPM). -->
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Mapster" />
+    <PackageReference Include="Mapster.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

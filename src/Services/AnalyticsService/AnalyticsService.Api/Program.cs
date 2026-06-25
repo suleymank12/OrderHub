@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OrderHub.AnalyticsService.Api.Extensions;
+using OrderHub.AnalyticsService.Application;
 using OrderHub.AnalyticsService.Infrastructure;
 using OrderHub.AnalyticsService.Infrastructure.Persistence;
 using Serilog;
@@ -19,10 +20,13 @@ try
         .ReadFrom.Services(services));
 
     builder.Services
+        .AddApplication()
         .AddInfrastructure(builder.Configuration)
         .AddJwtAuthentication(builder.Configuration)
         .AddApiServices(builder.Configuration)
         .AddSwaggerWithJwt();
+
+    builder.Services.AddControllers();
 
     var app = builder.Build();
 
@@ -51,7 +55,8 @@ try
     app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
     app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
-    // Read-only analytics endpoint'leri (controller'lar) + Kafka consumer 4c-2/4d'de eklenir.
+    // Read-only analytics endpoint'leri (AnalyticsController): GET orders/{id}, GET revenue/daily.
+    app.MapControllers();
 
     app.Run();
 }

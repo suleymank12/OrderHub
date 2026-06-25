@@ -12,6 +12,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AnalyticsService.Domain\OrderHub.AnalyticsService.Domain.csproj" />
+    <!-- 4d: read-side port (IAnalyticsReadRepository) implementasyonu için. Infrastructure → Application (Clean Arch:
+         Application Infrastructure'a ref VERMEZ; bağımlılık tek yönlü Infra → App). -->
+    <ProjectReference Include="..\AnalyticsService.Application\OrderHub.AnalyticsService.Application.csproj" />
     <!-- 4c-2: Kafka consumer order-stream event'lerini (OrderStreamEvent + 4 order event) okur. -->
     <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
     <!-- IKafkaEvent + KafkaMessageHeaders (type-header dispatch). EventBus, Confluent.Kafka'yı transitively getirir. -->
