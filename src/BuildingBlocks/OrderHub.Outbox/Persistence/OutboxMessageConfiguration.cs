@@ -16,8 +16,11 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
     {
         builder.ToTable("OutboxMessages");
 
-        builder.HasKey(message => message.Id);
+        // Composite PK (Id, Ordinal) — ADR-0006 Karar 4: bir domain olayı N integration olayına fan-out edebilir
+        // (Id == EventId sabit, Ordinal disambiguator). Inbox (MessageId, MessageType) composite precedent'iyle simetrik.
+        builder.HasKey(message => new { message.Id, message.Ordinal });
         builder.Property(message => message.Id).ValueGeneratedNever(); // Id client-side (= integration event Id).
+        builder.Property(message => message.Ordinal).ValueGeneratedNever(); // Ordinal client-side (fan-out sırası).
 
         builder.Property(message => message.Type).IsRequired().HasMaxLength(500);
         builder.Property(message => message.Payload).IsRequired(); // nvarchar(max): payload boyutu sınırsız.

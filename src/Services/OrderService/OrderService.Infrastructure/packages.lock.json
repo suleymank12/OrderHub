@@ -107,6 +107,11 @@
         "resolved": "2.14.1",
         "contentHash": "lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw=="
       },
+      "librdkafka.redist": {
+        "type": "Transitive",
+        "resolved": "2.6.1",
+        "contentHash": "RcpH/eqmfp08RmfeQdHeJEz0OaAcYWJo8EqQiU4ohDrBygIXbWhCTksUFkhYGqap/5Ycm+HC9RVSlwetFo9SlA=="
+      },
       "Mapster.Core": {
         "type": "Transitive",
         "resolved": "1.2.1",
@@ -689,6 +694,7 @@
       "orderhub.eventbus": {
         "type": "Project",
         "dependencies": {
+          "Confluent.Kafka": "[2.6.1, )",
           "MassTransit": "[8.5.9, )",
           "MassTransit.RabbitMQ": "[8.5.9, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )"
@@ -733,6 +739,15 @@
           "Microsoft.Extensions.Options": "[8.0.2, )",
           "OrderHub.Common": "[1.0.0, )",
           "OrderHub.EventBus": "[1.0.0, )"
+        }
+      },
+      "Confluent.Kafka": {
+        "type": "CentralTransitive",
+        "requested": "[2.6.1, )",
+        "resolved": "2.6.1",
+        "contentHash": "DCap4xzbUzItoFVBCmBbng6q4XbaxfqLgR/b56b67L9S0iUTIwrSAvk3MPegyQNn56+1C/m3ytwy1YU+nAuqDA==",
+        "dependencies": {
+          "librdkafka.redist": "2.6.1"
         }
       },
       "FluentValidation.DependencyInjectionExtensions": {

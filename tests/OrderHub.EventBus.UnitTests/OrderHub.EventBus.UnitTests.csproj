@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.EventBus.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.EventBus.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <!-- IProducer / Message / ProducerConfig / Acks tiplerini mock'lamak + config doğrulamak için. -->
+    <PackageReference Include="Confluent.Kafka" />
+  </ItemGroup>
+
+</Project>

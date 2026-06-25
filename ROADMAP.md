@@ -244,7 +244,7 @@ Faz 7: Docs + CI           → README + ADR + diagrams + GitHub Actions
 
 ## 4.1 Mimari karar — neden hem RabbitMQ hem Kafka?
 
-ADR yaz: `docs/adr/0001-rabbitmq-vs-kafka.md`. Özet:
+ADR yaz: `docs/adr/0006-kafka-event-streaming.md` (0001 zaten migration-in-docker'a ait → çakışma giderildi). Özet:
 - **RabbitMQ:** Command-style, point-to-point, "bu iş yapılmalı" semantiği. Retry/DLQ kolay. Düşük throughput'lu critical messaging.
 - **Kafka:** Event log, pub-sub, replay edilebilir, yüksek throughput. Multiple consumer'lar bağımsız offset'le aynı stream'i okur. Analytics, audit, future consumer için.
 
