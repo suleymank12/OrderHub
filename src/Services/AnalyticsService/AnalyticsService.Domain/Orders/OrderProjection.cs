@@ -61,4 +61,39 @@ public sealed class OrderProjection
 
         return new OrderProjection(orderId, customerId, total, currency, createdAtUtc, lastUpdatedUtc);
     }
+
+    // ★ İleri-only durum geçişleri (domain consistency): geçiş yalnız "önceki" durumlardan yapılır → out-of-order
+    // veya tekrar gelen event status'u GERİ GÖTÜREMEZ ve status için doğal olarak idempotenttir (tekrar = no-op).
+    // Bu, event-id dedup DEĞİLDİR (o 4c-3; revenue idempotency'si için). Money/wire tipi sızdırılmaz → primitive param.
+
+    /// <summary>OrderConfirmed: yalnız Created'tan Confirmed'e ilerletir (aksi → no-op).</summary>
+    public void MarkConfirmed(DateTime occurredAtUtc)
+    {
+        if (Status == OrderProjectionStatus.Created)
+        {
+            Status = OrderProjectionStatus.Confirmed;
+            LastUpdatedUtc = occurredAtUtc;
+        }
+    }
+
+    /// <summary>OrderPaid: Created/Confirmed'den Paid'e ilerletir + ödeme zamanını set eder (aksi → no-op).</summary>
+    public void MarkPaid(DateTime occurredAtUtc)
+    {
+        if (Status is OrderProjectionStatus.Created or OrderProjectionStatus.Confirmed)
+        {
+            Status = OrderProjectionStatus.Paid;
+            PaidAtUtc = occurredAtUtc;
+            LastUpdatedUtc = occurredAtUtc;
+        }
+    }
+
+    /// <summary>OrderCancelled: Created/Confirmed'den Cancelled'e geçirir (ödenmiş sipariş iptal edilmez → no-op).</summary>
+    public void MarkCancelled(DateTime occurredAtUtc)
+    {
+        if (Status is OrderProjectionStatus.Created or OrderProjectionStatus.Confirmed)
+        {
+            Status = OrderProjectionStatus.Cancelled;
+            LastUpdatedUtc = occurredAtUtc;
+        }
+    }
 }

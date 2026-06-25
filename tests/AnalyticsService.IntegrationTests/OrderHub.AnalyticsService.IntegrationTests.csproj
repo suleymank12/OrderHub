@@ -10,10 +10,13 @@
     <ProjectReference Include="..\..\src\Services\AnalyticsService\AnalyticsService.Infrastructure\OrderHub.AnalyticsService.Infrastructure.csproj" />
   </ItemGroup>
 
-  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar (4c-1: yalnız SQL; Kafka 4c-2). -->
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Testcontainers.MsSql" />
+    <!-- 4c-2: gerçek Kafka container'a order event'leri produce edip consumer'ı doğrulamak için. -->
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Testcontainers.Kafka" />
   </ItemGroup>
 
 </Project>
