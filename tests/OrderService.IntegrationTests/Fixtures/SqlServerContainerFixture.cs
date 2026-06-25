@@ -18,6 +18,13 @@ public sealed class SqlServerContainerFixture : IAsyncLifetime
         .WithImage("mcr.microsoft.com/mssql/server:2022-CU13-ubuntu-22.04")
         .Build();
 
+    /// <summary>
+    /// Migrasyonları uygulanmış container'ın connection string'i. Outbox testleri bununla gerçek
+    /// <c>AddInfrastructure</c> DI'ını kurar (production wiring'i — OrderConfirmed→ProcessPayment map'i +
+    /// interceptor sırası — birebir doğrular; elle yeniden kurmaz).
+    /// </summary>
+    internal string ConnectionString => _container.GetConnectionString();
+
     public async Task InitializeAsync()
     {
         await _container.StartAsync();

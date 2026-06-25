@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Transactional Outbox building block (ADR-0002 "Faz 3 Evrim").
+       TFM / Nullable / ImplicitUsings / LangVersion → kök Directory.Build.props.
+       AssemblyName = csproj adı = OrderHub.Outbox (zaten tam ad). -->
+
+  <ItemGroup>
+    <!-- IDomainEvent / AggregateRoot<TId>: interceptor aggregate'lerin domain event'lerini OKUR (clear etmez). -->
+    <ProjectReference Include="..\OrderHub.Common\OrderHub.Common.csproj" />
+    <!-- IIntegrationEvent / IIntegrationEventPublisher: domain→integration çeviri ve publish hedefi. -->
+    <ProjectReference Include="..\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SaveChangesInterceptor (Core) + IEntityTypeConfiguration/ToTable/index (Relational).
+         Provider-agnostik: SQL Server bağlama servis Infrastructure'ında (database-per-service). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <!-- OutboxProcessorService : BackgroundService (HostedService) + AddHostedService. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <!-- IServiceScopeFactory + DI extension (AddOutbox); BackgroundService scope başına DbContext/publisher resolve eder. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- ILogger (yapısal log, OutboxLog source-gen). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <!-- IOptions<OutboxProcessorOptions> (polling interval / batch size / max retry). -->
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+</Project>

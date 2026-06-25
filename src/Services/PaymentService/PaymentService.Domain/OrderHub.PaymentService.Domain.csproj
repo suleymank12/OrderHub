@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Klasör kısa (PaymentService.Domain), assembly/namespace tam. -->
+    <AssemblyName>OrderHub.PaymentService.Domain</AssemblyName>
+    <RootNamespace>OrderHub.PaymentService.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Common\OrderHub.Common.csproj" />
+  </ItemGroup>
+
+</Project>

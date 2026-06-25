@@ -12,6 +12,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OrderService.Application\OrderHub.OrderService.Application.csproj" />
+    <!-- Outbox writer: OutboxInterceptor + IOutboxDbContext + OutboxMessage(Configuration). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
+    <!-- Inbox: IInboxDbContext + InboxMessage(Configuration) + consume filter (3d-2'de pipeline'a bağlanır). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
+    <!-- Transport (RabbitMQ): AddRabbitMqEventBus + RabbitMqOptions (outbox processor publish hedefi). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- Integration event sözleşmesi: OrderConfirmed → ProcessPaymentIntegrationEvent çevirisi için. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +29,11 @@
     <PackageReference Include="Hangfire.Core" />
     <!-- RecurringJobRegistrar IHostedService olarak sweep'i startup'ta kaydeder. -->
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <!-- RabbitMqOptions'ı config'ten bağlamak için ConfigurationBinder.Get<T>(). -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <!-- Consumer'lar ISender ile MediatR'a delege eder ve ValidationException (poison) yakalar → doğrudan kullanım. -->
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <!-- Design: sadece migration üretimi için; downstream'e (Api) sızmasın. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">

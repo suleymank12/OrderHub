@@ -16,6 +16,12 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <!-- ApiTestFactory production RabbitMQ bus'ını in-memory test harness'e çevirir → broker'sız test.
+         AddMassTransitTestHarness MassTransit core paketindedir (ek transport paketi yok). -->
+    <PackageReference Include="MassTransit" />
+    <!-- RabbitMQ smoke testi (3b-2): gerçek broker container'ı + gerçek UsingRabbitMq transport. -->
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
   </ItemGroup>
 
 </Project>

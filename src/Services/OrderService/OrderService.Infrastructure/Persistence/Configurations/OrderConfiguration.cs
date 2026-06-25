@@ -29,6 +29,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasConversion<UtcDateTimeConverter>()
             .IsRequired();
         builder.Property(order => order.ConfirmedAtUtc).HasConversion<NullableUtcDateTimeConverter>();
+        builder.Property(order => order.PaidAtUtc).HasConversion<NullableUtcDateTimeConverter>();
         builder.Property(order => order.CancelledAtUtc).HasConversion<NullableUtcDateTimeConverter>();
 
         builder.Property(order => order.CancellationReason).HasMaxLength(500);

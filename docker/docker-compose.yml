@@ -33,6 +33,25 @@ services:
     networks:
       - orderhub
 
+  rabbitmq:
+    image: rabbitmq:3.13-management # pinned; 3d testleriyle aynı. management plugin → UI (15672, override'da).
+    environment:
+      # K3: kimlik bilgileri .env'den; repo'da plaintext yok. appsettings RabbitMq:Username/Password env override'ı ile eşleşir.
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq # durable queue/mesaj kalıcılığı (broker restart'ta kayıp olmasın)
+    healthcheck:
+      # Broker GERÇEKTEN hazır mı (process up ≠ ready). Servisler service_healthy bekler → startup yarışı yok (§3.8 normal start).
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s # management plugin dahil soğuk start
+    restart: unless-stopped # uzun ömürlü infra
+    networks:
+      - orderhub
+
   orderservice:
     build:
       context: .. # repo kökü
@@ -42,15 +61,48 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Order;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
       JwtSettings__Secret: ${JWT_SECRET} # .env'den
+      # RabbitMq: appsettings'te dev default (Host=localhost, Username=guest); compose env override → broker (K3).
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
       # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
     depends_on:
       sqlserver:
         condition: service_healthy # şema migration'ı için DB hazır olmalı
+      rabbitmq:
+        condition: service_healthy # broker hazır olmadan publish/consume bağlanmasın
       seq:
         condition: service_started
     # restart YOK: startup/migration hatası restart loop'unda gizlenmesin (görünür kalsın).
+    networks:
+      - orderhub
+
+  paymentservice:
+    build:
+      context: .. # repo kökü (OrderService ile aynı context)
+      dockerfile: src/Services/PaymentService/PaymentService.Api/Dockerfile
+    environment:
+      # ADR-0001: local dev Development'ta (Swagger + startup migration). Database-per-service → ayrı DB (OrderHub_Payment).
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Payment;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      JwtSettings__Secret: ${JWT_SECRET} # .env'den
+      # RabbitMq: appsettings dev default'unu override → broker'a bağlanır (K3, secret env'den).
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      # Seq sink yalnızca container'da aktif (index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+    depends_on:
+      sqlserver:
+        condition: service_healthy # şema migration'ı için DB hazır olmalı
+      rabbitmq:
+        condition: service_healthy # broker hazır olmadan consumer/outbox bağlanmasın
+      seq:
+        condition: service_started
+    # restart YOK: startup/migration hatası restart loop'unda gizlenmesin (OrderService kuralı).
     networks:
       - orderhub
 
@@ -61,3 +113,4 @@ networks:
 volumes:
   sql-data:
   seq-data:
+  rabbitmq-data:

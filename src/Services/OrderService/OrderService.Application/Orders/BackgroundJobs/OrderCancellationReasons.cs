@@ -8,4 +8,7 @@ internal static class OrderCancellationReasons
 {
     /// <summary>Sipariş, ödeme süresi içinde ödenmediği için otomatik iptal edildi.</summary>
     public const string PaymentTimeout = "payment_timeout";
+
+    /// <summary>Sipariş, ödeme sağlayıcısı ödemeyi reddettiği için iptal edildi (PaymentFailed akışı).</summary>
+    public const string PaymentFailed = "payment_failed";
 }

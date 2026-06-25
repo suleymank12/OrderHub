@@ -18,6 +18,13 @@ internal static class OrderFactory
         return order;
     }
 
+    public static Order PaidOrder()
+    {
+        var order = ConfirmedOrder();
+        order.MarkPaid();
+        return order;
+    }
+
     public static Order CancelledOrder()
     {
         var order = PendingOrder();

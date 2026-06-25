@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.PaymentService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.PaymentService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- DbContext/Repository internal (§9); yalnızca integration test assembly'sine açılır (3c'de gelecek). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.PaymentService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PaymentService.Application\OrderHub.PaymentService.Application.csproj" />
+    <!-- Outbox writer: OutboxInterceptor + IOutboxDbContext + OutboxMessage(Configuration).
+         Integration event mapping (registry) 3c'de eklenecek → Contracts ref de o zaman. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
+    <!-- Inbox: IInboxDbContext + InboxMessage(Configuration) + consume filter (3d-2'de pipeline'a bağlanır). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
+    <!-- Transport (RabbitMQ): AddRabbitMqEventBus + RabbitMqOptions (outbox processor publish hedefi). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- Integration event sözleşmeleri: ProcessPayment consume + PaymentSucceeded/Failed publish (outbox Map). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Consumer ISender ile MediatR'a delege eder ve ValidationException (poison message) yakalar →
+         doğrudan kullanım, transitive'e güvenme. -->
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- RabbitMqOptions'ı config'ten bağlamak için ConfigurationBinder.Get<T>(). -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: sadece migration üretimi için; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

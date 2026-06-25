@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Integration event soyutlaması + RabbitMQ taşıma wrapper'ı (ADR-0004).
+       TFM / Nullable / ImplicitUsings / LangVersion → kök Directory.Build.props.
+       AssemblyName = csproj adı = OrderHub.EventBus (zaten tam ad). -->
+
+  <ItemGroup>
+    <!-- MassTransit core (AddMassTransit, IPublishEndpoint) + RabbitMQ transport (UsingRabbitMq).
+         RabbitMQ paketi MassTransit'i transitively getirir; ikisi de explicit → niyet açık. -->
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <!-- IServiceCollection extension (AddRabbitMqEventBus) için abstraction-only DI paketi. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+</Project>

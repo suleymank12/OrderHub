@@ -19,3 +19,12 @@ services:
   orderservice:
     ports:
       - "8080:8080" # Swagger → http://localhost:8080/swagger (container içi 8080)
+
+  rabbitmq:
+    ports:
+      - "5672:5672"   # AMQP — host'tan broker erişimi (debug / 3d test repro)
+      - "15672:15672" # Management UI → http://localhost:15672 (guest yerine .env user/pass)
+
+  paymentservice:
+    ports:
+      - "8082:8080" # Swagger → http://localhost:8082/swagger (orderservice 8080 ile çakışmasın)

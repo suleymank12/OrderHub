@@ -42,6 +42,18 @@ try
 
     var app = builder.Build();
 
+    // ADR-0001 (Seçenek B): yalnızca Development'ta startup migration → "docker-compose up" tek komut.
+    // ★ build()'den HEMEN SONRA — herhangi bir Hangfire/JobStorage resolve noktasından (MapHangfireDashboard,
+    // hosted service'ler) ÖNCE. Fresh-DB cold-start'ta DB, Hangfire schema-prep'inden (PrepareSchemaIfNecessary)
+    // ÖNCE var olur → 'HangFire.Hash' yokluğu (RecurringJobRegistrar crash, exit 139) engellenir. Migration'ın
+    // middleware'den önce koşması zararsız (sıra önemsiz; tek gereksinim DB'nin hazır olması). Production'da
+    // otomatik migration YOK (§9 prod-safe); patlarsa app ayağa kalkmaz (fail-fast → outer catch → container exit).
+    if (app.Environment.IsDevelopment())
+    {
+        Log.Information("Applying database migrations (Development)...");
+        await app.Services.ApplyMigrationsAsync();
+    }
+
     // ExceptionHandler en dışta → tüm downstream exception'lar ProblemDetails'e çevrilir.
     app.UseExceptionHandler();
     app.UseSerilogRequestLogging(); // request log + TraceId/RequestId enrich.
@@ -76,15 +88,6 @@ try
             })
             .AllowAnonymous()
             .WithTags("Dev");
-    }
-
-    // ADR-0001 (Seçenek B): yalnızca Development'ta startup'ta migration uygula → "docker-compose up"
-    // tek komutla çalışsın. Production'da otomatik migration YOK (§9 prod-safe). Migration patlarsa
-    // app ayağa kalkmaz (fail-fast → outer catch → container exit; şema yoksa zaten çalışamaz).
-    if (app.Environment.IsDevelopment())
-    {
-        Log.Information("Applying database migrations (Development)...");
-        await app.Services.ApplyMigrationsAsync();
     }
 
     app.Run();
