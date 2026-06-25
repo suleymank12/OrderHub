@@ -26,4 +26,9 @@ internal static partial class OutboxLog
     [LoggerMessage(EventId = 3003, Level = LogLevel.Error,
         Message = "Outbox processing batch failed; polling loop continues")]
     public static partial void BatchFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 3004, Level = LogLevel.Warning,
+        Message = "Outbox publish deferred for message {MessageId} of type {MessageType}; broker unavailable, will retry next poll (RetryCount unchanged)")]
+    public static partial void PublishDeferred(
+        ILogger logger, Guid messageId, string messageType, Exception exception);
 }

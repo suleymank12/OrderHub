@@ -14,4 +14,11 @@ public sealed class OutboxProcessorOptions
 
     /// <summary>Bu sayıya ulaşan mesaj artık çekilmez (DLQ/manual müdahale); sonsuz retry yok (default 5).</summary>
     public int MaxRetryCount { get; set; } = 5;
+
+    /// <summary>
+    /// Tek bir publish denemesinin üst süre sınırı (default 10 sn). Broker erişilemezken MassTransit publish'i
+    /// belirsiz süre <b>bloke edebilir</b>; bu timeout fail-fast sağlar → publish iptal olur (transient/deferred)
+    /// → poll döngüsü asılmaz, mesaj bir sonraki turda yeniden denenir. Shutdown iptali bundan ayrı ele alınır.
+    /// </summary>
+    public TimeSpan PublishTimeout { get; set; } = TimeSpan.FromSeconds(10);
 }

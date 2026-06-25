@@ -108,6 +108,38 @@ Domain event (`IDomainEvent`, `OrderHub.Common`) servis-içi kalır; integration
   **runtime'da doğrular** (eşleşmezse fail-fast). Böylece dedup zinciri bir factory yazım hatasıyla
   sessizce kopamaz (K5). `IDomainEvent.EventId`'nin XML-doc'u Faz 1'den beri bu rolü öngörüyordu.
 
+### Karar 5 — Processor hata sınıfı: transient (publish) ≠ poison (deserialize)
+
+- **Eklendi:** 2026-06-25 (Faz 3 Adım 3d-4a).
+
+`OutboxProcessorService.PublishAsync` ilk yazımında deserialize ve publish hatasını **tek catch'te** ele
+alıyordu; ikisi de `MarkFailed` (`RetryCount++`) çağırıyordu. Sorgu `RetryCount < MaxRetryCount(5)` ile
+filtrelediğinden, **broker ~5 poll (≈10 sn) down kalırsa** geçerli mesajların `RetryCount`'u 5'e ulaşıp
+**kalıcı düşüyordu** → broker dönse bile asla publish edilmiyordu (§3.8 ihlali = veri kaybı). Düzeltme iki
+hata sınıfını ayırır:
+
+- **Deserialize hatası = KALICI/poison:** `OutboxMessageSerializer.Deserialize` çözülemez tip veya
+  `IIntegrationEvent`'e dönmeyen payload için fail-fast atar → retry düzeltmez. **Terminal sayaç korunur**
+  (`RetryCount++` → `MaxRetryCount`'ta DLQ, `DeadLettered` Error log → Seq alert, §3.8). Sayaç tutulur (anında
+  terminal değil): eksik CLR tipi sonradan deploy edilirse bounded pencerede kurtulabilir.
+- **Publish hatası = GEÇİCİ/transient:** broker-down. **`RetryCount` ARTMAZ**, `ProcessedOnUtc` null kalır →
+  sonraki poll yeniden dener. Yalnız `PublishDeferred` (Warning) log; `MarkFailed` çağrılmaz.
+- **Publish timeout (fail-fast):** broker erişilemezken MassTransit publish'i belirsiz süre bloke edebilir →
+  poll döngüsü asılır. Publish, `stoppingToken` + `OutboxProcessorOptions.PublishTimeout` (default 10 sn)
+  linked-CTS ile çağrılır → timeout iptali transient'tir (deferred). **Shutdown iptali ayrılır:**
+  `OperationCanceledException when stoppingToken.IsCancellationRequested` → yeniden fırlatılıp döngü temiz
+  durur (deferred log basılmaz); aksi (timeout) → deferred.
+- **Transport-agnostik sınır korunur:** publish catch'i **geniş** (`Exception`); RabbitMQ/MassTransit exception
+  tipine referans YOK (`OrderHub.Outbox` transport'u bilmez, yalnız `IIntegrationEventPublisher`'ı). Gerekçe:
+  outbox'tan deserialize edilen nesne zaten geçerli bir `IIntegrationEvent` CLR objesidir → publish-anı poison
+  bu mimaride pratikte imkânsız (gerçek poison deserialize'da yakalanır); dolayısıyla tüm publish hataları
+  transient kabul edilir. Artık residual risk (deserialize olup broker'ın hep reddettiği mesaj) kabul edilir;
+  gerekirse ileride ayrı transient-eşik/alert eklenir (YAGNI).
+
+**Reddedilen:** publish exception'ını broker-down vs poison diye **tipiyle ayırmak** → transport-spesifik
+exception tiplerini building block'a sızdırır (transport-agnostik tasarım ihlali) + publish-poison
+neredeyse-imkânsız senaryo için karmaşıklık. Gerçek-broker fail-fast/reconnect davranışı 3d-4b'de doğrulanır.
+
 ## Alternatives Considered
 
 ### Seçenek A: Pre-commit dispatch (`SavingChangesAsync`)

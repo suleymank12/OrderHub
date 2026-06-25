@@ -11,10 +11,16 @@ namespace OrderHub.Outbox.Processing;
 /// <summary>
 /// İşlenmemiş outbox mesajlarını polling ile okuyup <see cref="IIntegrationEventPublisher"/> ile yayımlayan
 /// arka plan servisi (ROADMAP §3.2). At-least-once: önce publish, başarılıysa <c>ProcessedOnUtc</c> set.
-/// Hata → <c>RetryCount++</c> + Error; <c>MaxRetryCount</c>'a ulaşan mesaj artık çekilmez (DLQ/manual —
-/// sonsuz retry yok). <see cref="BackgroundService"/> singleton olduğundan scoped bağımlılıklar (DbContext,
-/// publisher) her turda <see cref="IServiceScopeFactory"/> ile yeni scope'tan resolve edilir (captive
-/// dependency önlenir).
+/// <para>
+/// İki hata sınıfı <b>ayrı</b> ele alınır (ADR-0002 Faz 3 Karar 5): <b>deserialize</b> hatası KALICI/poison
+/// (retry düzeltmez) → <c>RetryCount++</c> → <c>MaxRetryCount</c>'ta DLQ (artık çekilmez); <b>publish</b>
+/// hatası GEÇİCİ/transient (broker-down) → yalnız "deferred" log, <c>RetryCount</c> ARTMAZ,
+/// <c>ProcessedOnUtc</c> null kalır → sonraki poll yeniden dener (broker dönünce publish olur, §3.8).
+/// Publish per-mesaj <c>PublishTimeout</c> ile çağrılır (broker bloke ederse fail-fast → döngü asılmaz);
+/// shutdown iptali timeout iptalinden ayrılır (shutdown → temiz dur, deferred log basılmaz).
+/// </para>
+/// <see cref="BackgroundService"/> singleton olduğundan scoped bağımlılıklar (DbContext, publisher) her turda
+/// <see cref="IServiceScopeFactory"/> ile yeni scope'tan resolve edilir (captive dependency önlenir).
 /// </summary>
 internal sealed class OutboxProcessorService(
     IServiceScopeFactory scopeFactory,
@@ -31,6 +37,10 @@ internal sealed class OutboxProcessorService(
             try
             {
                 await ProcessBatchAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break; // Graceful shutdown: batch ortasında iptal (publish/SaveChanges) → temiz dur.
             }
 #pragma warning disable CA1031 // Polling loop ASLA ölmemeli: tek batch hatası (DB/broker down) sürekliliği bozamaz → en geniş yakalama bilinçli.
             catch (Exception exception)
@@ -77,16 +87,16 @@ internal sealed class OutboxProcessorService(
     }
 
     private async Task PublishAsync(
-        OutboxMessage message, IIntegrationEventPublisher publisher, CancellationToken cancellationToken)
+        OutboxMessage message, IIntegrationEventPublisher publisher, CancellationToken stoppingToken)
     {
+        // 1) DESERIALIZE — KALICI/poison: bozuk tip/payload retry ile düzelmez → terminal sayaç (RetryCount++)
+        //    → MaxRetryCount'ta DLQ (sorgudan düşer). Bu, gerçek poison'ı sonsuz denemekten korur (ADR-0002 Karar 5).
+        IIntegrationEvent integrationEvent;
         try
         {
-            var integrationEvent = OutboxMessageSerializer.Deserialize(message.Type, message.Payload);
-            await publisher.PublishAsync(integrationEvent, cancellationToken);
-            message.MarkProcessed(DateTime.UtcNow);
-            OutboxLog.Published(logger, message.Id, message.Type);
+            integrationEvent = OutboxMessageSerializer.Deserialize(message.Type, message.Payload);
         }
-#pragma warning disable CA1031 // Tek mesajın hatası (serialize/publish) diğerlerini ve batch'i düşürmemeli → mesaj bazında izole + retry.
+#pragma warning disable CA1031 // Deserialize hatası: tipi/payload'ı bilinmeyen poison → en geniş yakalama bilinçli.
         catch (Exception exception)
 #pragma warning restore CA1031
         {
@@ -100,6 +110,32 @@ internal sealed class OutboxProcessorService(
             {
                 OutboxLog.PublishFailed(logger, message.Id, message.Type, message.RetryCount, exception);
             }
+
+            return;
+        }
+
+        // 2) PUBLISH — GEÇİCİ/transient: broker bloke ederse poll döngüsü asılmasın diye per-publish timeout
+        //    (stoppingToken + PublishTimeout linked-CTS) → fail-fast iptal.
+        using var publishCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        publishCts.CancelAfter(_options.PublishTimeout);
+
+        try
+        {
+            await publisher.PublishAsync(integrationEvent, publishCts.Token);
+            message.MarkProcessed(DateTime.UtcNow);
+            OutboxLog.Published(logger, message.Id, message.Type);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // GERÇEK shutdown (timeout değil): mutasyon/loga dokunma, yeniden fırlat → döngü graceful dursun.
+            throw;
+        }
+#pragma warning disable CA1031 // Transient (broker-down VEYA publish-timeout): transport tipine referans YOK → outbox transport-agnostik kalır (ADR-0002 Karar 5).
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            // RetryCount ARTMAZ, ProcessedOnUtc null kalır → bir sonraki poll yeniden dener (broker dönünce publish).
+            OutboxLog.PublishDeferred(logger, message.Id, message.Type, exception);
         }
     }
 }
