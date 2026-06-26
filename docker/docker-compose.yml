@@ -187,6 +187,29 @@ services:
     networks:
       - orderhub
 
+  inventoryservice:
+    build:
+      context: .. # repo kökü (order/payment/analytics ile aynı context)
+      dockerfile: src/Services/InventoryService/InventoryService.Api/Dockerfile
+    environment:
+      # ADR-0001: local dev Development'ta (startup migration). Database-per-service → DÖRDÜNCÜ DB (OrderHub_Inventory).
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Inventory;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # JWT YOK: 5b'de HTTP endpoint yok (command-driven) → secret gerekmez (K3). RabbitMq env + Kafka YOK:
+      # consumer/saga 5c-5d'de gelir → o zaman eklenecek.
+    depends_on:
+      sqlserver:
+        condition: service_healthy # OrderHub_Inventory migration'ı için DB hazır olmalı
+      seq:
+        condition: service_started
+      # rabbitmq depends YOK: 5b'de consumer yok (saga command'leri 5c-5d). Eklenince service_healthy beklenecek.
+    # restart YOK: startup/migration hatası görünür kalsın (order/payment/analytics kuralı).
+    networks:
+      - orderhub
+
 networks:
   orderhub:
     driver: bridge

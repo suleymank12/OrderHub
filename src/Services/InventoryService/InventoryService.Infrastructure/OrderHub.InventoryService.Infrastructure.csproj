@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.InventoryService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.InventoryService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- DbContext/configuration internal (§9); yalnızca integration test assembly'sine açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.InventoryService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 5b: yalnız Domain + EF (şema). Application/Outbox/Inbox/Contracts/EventBus 5c'de (mesajlaşma). -->
+    <ProjectReference Include="..\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: sadece migration üretimi için; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

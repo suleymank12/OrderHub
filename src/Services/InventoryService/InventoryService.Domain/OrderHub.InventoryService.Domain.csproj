@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Klasör kısa (InventoryService.Domain), assembly/namespace tam. -->
+    <AssemblyName>OrderHub.InventoryService.Domain</AssemblyName>
+    <RootNamespace>OrderHub.InventoryService.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Common\OrderHub.Common.csproj" />
+  </ItemGroup>
+
+</Project>

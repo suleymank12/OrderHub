@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.InventoryService.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.InventoryService.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 5b: Infrastructure (internal DbContext + migration) + Domain. Api/host testi 5c'de (HTTP/consumer gelince). -->
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Infrastructure\OrderHub.InventoryService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.MsSql" />
+  </ItemGroup>
+
+</Project>

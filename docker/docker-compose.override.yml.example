@@ -40,3 +40,7 @@ services:
   analyticsservice:
     ports:
       - "8083:8080" # Swagger → http://localhost:8083/swagger (order 8080 / payment 8082 ile çakışmasın)
+
+  inventoryservice:
+    ports:
+      - "8084:8080" # health-only → http://localhost:8084/health/ready (5b'de Swagger/HTTP API yok; 8080-8083 çakışmasın)
