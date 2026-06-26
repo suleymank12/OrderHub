@@ -8,6 +8,7 @@ namespace OrderHub.InventoryService.Domain.Stock.Events;
 /// (PaymentFailed → ReleaseStock telafisi).
 /// </summary>
 /// <param name="StockItemId">Stok kalemi kimliği.</param>
+/// <param name="ProductId">İlgili ürün kimliği (integration event saga'ya taşır).</param>
 /// <param name="OrderId">İlgili sipariş kimliği.</param>
 /// <param name="Quantity">İade edilen miktar.</param>
-public sealed record StockReleased(Guid StockItemId, Guid OrderId, int Quantity) : DomainEvent;
+public sealed record StockReleased(Guid StockItemId, Guid ProductId, Guid OrderId, int Quantity) : DomainEvent;

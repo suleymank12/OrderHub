@@ -6,15 +6,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- 5b: Infrastructure (internal DbContext + migration) + Domain. Api/host testi 5c'de (HTTP/consumer gelince). -->
     <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Infrastructure\OrderHub.InventoryService.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+    <!-- 5c: AddApplication() DI + ExpireStockReservationsJob (internal, InternalsVisibleTo Application.csproj'a eklendi). -->
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Application\OrderHub.InventoryService.Application.csproj" />
+    <!-- Integration event contract tipleri (consumer E2E testleri). -->
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
   </ItemGroup>
 
-  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Testcontainers.MsSql" />
+    <!-- 5c: gerçek RabbitMQ broker üzerinden consumer uçtan uca testi. -->
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <!-- BuildProvider'da ConfigurationBuilder + AddInMemoryCollection için (Api proj. yok → transitive gelmez). -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
   </ItemGroup>
 
 </Project>

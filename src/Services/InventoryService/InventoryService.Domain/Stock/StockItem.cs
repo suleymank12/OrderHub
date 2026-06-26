@@ -87,6 +87,20 @@ public sealed class StockItem : AggregateRoot<Guid>
     }
 
     /// <summary>
+    /// Stok yetersizliği nedeniyle rezervasyonun başarısız olduğunu kaydeder: state DEĞİŞMEZ (rezervasyon
+    /// oluşmaz), yalnızca <see cref="Events.StockReservationFailed"/> domain olayı yükseltilir → handler bunu
+    /// <see cref="Reserve"/>'ün fırlattığı <see cref="InsufficientStockException"/>'ı yakalayınca çağırır; olay
+    /// transactional outbox ile saga'ya bildirilir (compensation). Stok-yetersiz = NORMAL iş sonucu (exception
+    /// yalnız aggregate invariant'ını korur, dışarı sızmaz).
+    /// </summary>
+    public void RecordReservationFailure(Guid orderId, string reason)
+    {
+        EnsureOrderId(orderId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        RaiseDomainEvent(new StockReservationFailed(Id, ProductId, orderId, reason));
+    }
+
+    /// <summary>
     /// Sipariş rezervasyonunu onaylar (Pending → Confirmed); stok kalıcı düşer (available değişmez —
     /// reserve'de zaten düşürüldü) ve <see cref="StockReservationConfirmed"/> yükseltir. Idempotent: zaten
     /// Confirmed ise no-op. Rezervasyon yoksa → <see cref="ReservationNotFoundException"/>.
@@ -112,7 +126,24 @@ public sealed class StockItem : AggregateRoot<Guid>
         if (reservation.Release()) // zaten Released → false (iade tekrarı yok); Confirmed → InvalidTransition.
         {
             AvailableQuantity += reservation.Quantity; // stok yalnız gerçek iadede geri eklenir.
-            RaiseDomainEvent(new StockReleased(Id, orderId, reservation.Quantity));
+            RaiseDomainEvent(new StockReleased(Id, ProductId, orderId, reservation.Quantity));
+        }
+    }
+
+    /// <summary>
+    /// Bir sipariş rezervasyonunu zaman aşımıyla serbest bırakır (Pending → Expired, 15dk timeout); ayrılan miktar
+    /// iade edilir ve <see cref="StockReservationExpired"/> yükseltilir. Compensation'dan AYRI sinyal (expiry ≠
+    /// release — saga farklı tepki verebilir). Idempotent: zaten Expired ise no-op. Confirmed'ı expire →
+    /// <see cref="InvalidReservationStatusTransitionException"/>. <c>ExpiresAtUtc</c> geçmiş rezervasyonlar için
+    /// Hangfire job'undan çağrılır (ADR-0007 Karar 2).
+    /// </summary>
+    public void ExpireReservation(Guid orderId)
+    {
+        var reservation = RequireReservation(orderId);
+        if (reservation.Expire()) // zaten Expired → false; Confirmed/Released → InvalidTransition.
+        {
+            AvailableQuantity += reservation.Quantity; // stok yalnız gerçek expiry'de geri eklenir.
+            RaiseDomainEvent(new StockReservationExpired(Id, ProductId, orderId, reservation.Quantity));
         }
     }
 

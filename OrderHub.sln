@@ -83,6 +83,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.InventoryService.U
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.InventoryService.IntegrationTests", "tests\InventoryService.IntegrationTests\OrderHub.InventoryService.IntegrationTests.csproj", "{AB11F250-17BA-4EEF-B0BD-AE99CEFCB9FE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.InventoryService.Application", "src\Services\InventoryService\InventoryService.Application\OrderHub.InventoryService.Application.csproj", "{FE69A65F-3E77-4325-8500-273D09482E37}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -216,6 +218,10 @@ Global
 		{AB11F250-17BA-4EEF-B0BD-AE99CEFCB9FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AB11F250-17BA-4EEF-B0BD-AE99CEFCB9FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AB11F250-17BA-4EEF-B0BD-AE99CEFCB9FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE69A65F-3E77-4325-8500-273D09482E37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE69A65F-3E77-4325-8500-273D09482E37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE69A65F-3E77-4325-8500-273D09482E37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE69A65F-3E77-4325-8500-273D09482E37}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A326A5EC-9671-4D6D-8B8B-503E6D146E7A} = {81B9C654-3B5F-4587-B481-8B3379AF0617}
@@ -255,5 +261,6 @@ Global
 		{F9FD8CD1-E73D-4E01-8086-124DF46042B8} = {7B989988-89CC-43A6-9865-454F73ACE418}
 		{19EC581E-686C-4DCE-B78E-B160484B44DD} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 		{AB11F250-17BA-4EEF-B0BD-AE99CEFCB9FE} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
+		{FE69A65F-3E77-4325-8500-273D09482E37} = {7B989988-89CC-43A6-9865-454F73ACE418}
 	EndGlobalSection
 EndGlobal

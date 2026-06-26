@@ -6,15 +6,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- 5b: yalnız Domain (aggregate davranış + invariant). Application 5c'de (handler testleri). -->
     <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+    <!-- 5c: handler testleri — InternalsVisibleTo Application.csproj'da mevcut. -->
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Application\OrderHub.InventoryService.Application.csproj" />
   </ItemGroup>
 
-  <!-- IsTestProject / Test.Sdk / xunit / runner / coverlet + Using Xunit/FluentAssertions (global using)
-       → tests/Directory.Build.props (ortak). FluentAssertions PAKETİ proje-bazlı eklenir. Domain testleri
-       mock gerektirmez (saf aggregate) → Moq/AutoFixture yok. -->
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
+    <!-- Handler testleri: IInventoryRepository mock'u. -->
+    <PackageReference Include="Moq" />
   </ItemGroup>
 
 </Project>

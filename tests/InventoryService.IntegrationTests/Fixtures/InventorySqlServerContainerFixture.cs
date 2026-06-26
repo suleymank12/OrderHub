@@ -16,6 +16,9 @@ public sealed class InventorySqlServerContainerFixture : IAsyncLifetime
         .WithImage("mcr.microsoft.com/mssql/server:2022-CU13-ubuntu-22.04")
         .Build();
 
+    /// <summary>Migrasyonları uygulanmış container'ın connection string'i.</summary>
+    internal string ConnectionString => _container.GetConnectionString();
+
     /// <summary>Container'a bağlı yeni bir <see cref="InventoryDbContext"/> üretir (internal — InternalsVisibleTo).</summary>
     internal InventoryDbContext CreateContext() =>
         new(new DbContextOptionsBuilder<InventoryDbContext>()

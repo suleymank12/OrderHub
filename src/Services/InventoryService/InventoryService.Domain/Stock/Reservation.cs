@@ -51,6 +51,9 @@ public sealed class Reservation : Entity<Guid>
     /// <summary>Pending → Released (compensation). Değiştiyse <c>true</c>, zaten Released ise <c>false</c>.</summary>
     internal bool Release() => Transition(ReservationStatus.Released);
 
+    /// <summary>Pending → Expired (15dk timeout). Değiştiyse <c>true</c>, zaten Expired ise <c>false</c>.</summary>
+    internal bool Expire() => Transition(ReservationStatus.Expired);
+
     // Pending'den tek-yönlü terminal geçiş. Aynı hedefe tekrar = idempotent no-op → false (event bastırılır).
     // Pending dışı bir kaynaktan farklı bir hedefe geçiş = anlamsız (ör. Confirmed'ı Release) → exception.
     private bool Transition(ReservationStatus target)
