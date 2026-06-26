@@ -494,12 +494,17 @@ PaymentFailed → ReleaseStock → CancelOrder
 
 ## 7.2 ADR'ler
 
-- [ ] 0001 — RabbitMQ vs Kafka — neden ikisi de
-- [ ] 0002 — Outbox pattern adoption
-- [ ] 0003 — Database-per-service
-- [ ] 0004 — Saga orchestration (orchestration vs choreography seçimi)
-- [ ] 0005 — JSON over Avro/Protobuf
-- [ ] 0006 — MassTransit seçimi
+> **Not (Faz 5, 5a):** Aşağıdaki liste ESKİ planlama numaralarıydı (stale). ADR'ler artık fazlar ilerledikçe
+> GERÇEK sırayla yazılıyor; bu Faz 7 maddesi yalnızca "hepsi yazıldı mı" denetimidir. Gerçek dosya sırası:
+
+- [x] 0001 — Migration-in-docker (Faz 1)
+- [x] 0002 — In-process domain event dispatch (Faz 2/3)
+- [x] 0003 — Hangfire storage + timeout reliability (Faz 2)
+- [x] 0004 — MassTransit / RabbitMQ (Faz 3)
+- [x] 0005 — Custom Inbox (Faz 3)
+- [x] 0006 — Kafka event streaming (Faz 4)
+- [x] 0007 — **Saga orchestration** (orchestration vs choreography seçimi) (Faz 5) — *eski listede yanlışlıkla "0004" yazıyordu*
+- [ ] Faz 7'de: README'ye ADR index linkleri + eksik kalan mimari kararların ADR'leri (gerekirse)
 
 ## 7.3 Postman / Bruno collection
 

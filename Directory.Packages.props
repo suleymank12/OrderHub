@@ -64,6 +64,13 @@
          System.Text.Json'dır (Newtonsoft YOK → §3 temiz, ADR-0004 Karar 3). -->
     <PackageVersion Include="MassTransit" Version="8.5.9" />
     <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.9" />
+    <!-- Faz 5 (ADR-0007 Karar 3): MassTransit saga state-machine'i EF Core saga repository ile persist eder
+         (OrderHub_Sagas DB, database-per-service). MassTransit alt-paketleri lockstep → core ile AYNI sürüm (8.5.9)
+         pinli (diamond sürpriz yok). Bu adımda (5a) yalnız CPM pin'i; saga kodu 5d'de — pin kullanılmasa da
+         CPM merkezi tanımı warning vermez. MassTransit.Hangfire (saga-native timeout) BİLİNÇLİ eklenmedi (YAGNI):
+         reservation expiry InventoryService Hangfire-job → StockReservationExpired event ile çözülür (ADR-0007
+         Karar 2); saga-native scheduler gerçekten gerekirse 5d'de eklenir. -->
+    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.5.9" />
   </ItemGroup>
 
   <ItemGroup Label="Event Streaming (Kafka)">
