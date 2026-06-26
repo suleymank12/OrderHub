@@ -283,10 +283,10 @@ Mülakatta savunacağın asıl argüman bu — ADR'yi ciddi yaz.
 
 ## 4.6 docker-compose güncelleme
 
-- [ ] Kafka (Confluent kafka:7.x KRaft mode — Zookeeper-less, daha modern)
-- [ ] Schema registry **eklemiyoruz** (JSON kullanıyoruz, ADR'de gerekçe var)
-- [ ] Kafka UI (provectuslabs/kafka-ui) — debug için
-- [ ] `analyticsservice` build
+- [x] Kafka (Confluent cp-kafka:7.6.1 KRaft mode — Zookeeper-less; Testcontainers fixture'larıyla aynı major.minor)
+- [x] Schema registry **eklemiyoruz** (JSON kullanıyoruz, ADR-0006'da gerekçe var)
+- [x] Kafka UI (provectuslabs/kafka-ui:v0.7.2) — debug için
+- [x] `analyticsservice` build (OrderHub_Analytics, Kafka consumer + read-API; depends_on sqlserver+kafka healthy)
 
 ## 4.7 Testler
 
@@ -303,6 +303,39 @@ Mülakatta savunacağın asıl argüman bu — ADR'yi ciddi yaz.
 - ✅ Kafka down olsa bile outbox kaybetmiyor
 - ✅ ADR yazılmış ve mantıklı
 - ✅ 400 satır + test coverage hedefleri tutmuş
+
+### 4.8.1 Manuel demo — "Kafka down → outbox kaybetmez" (compose, broker-outage)
+
+> Faz 3 §3.8 RabbitMQ broker-outage demo'sunun Kafka karşılığı; **compose seviyesinde manuel acceptance**.
+> Tüm container'lar `cd docker && docker compose up -d --build` ile ayakta. Portlar override'dan
+> (order 8080, analytics 8083, kafka-ui 8088, seq 8081).
+>
+> **Not (mevcut build):** `Order.Confirm()`/`MarkPaid()` HTTP ile tetiklenmez (yalnız domain seam'i —
+> integration testlerinde). Bu yüzden HTTP ile üretilebilen tek lifecycle olayı **OrderCreated**'tır →
+> Analytics `OrderProjection` **Created** durumunda oluşur. Confirm→Pay→Paid + DailyRevenue akışı 4c-3
+> integration testleriyle (gerçek Kafka container) kanıtlıdır. Demo bu yüzden OrderCreated→Kafka→projection
+> dayanıklılığını gösterir; tam Paid akışı testlerde.
+
+1. **Baseline (Kafka up):**
+   - `POST http://localhost:8080/api/dev/token` (body `{"userId":"<guid>"}`) → JWT al.
+   - `POST http://localhost:8080/api/orders` (Bearer) → `orderId`. → OrderService `OrderCreated`'ı Kafka
+     outbox'una yazar; OutboxProcessor `order-hub.orders.events`'e publish eder.
+   - ~1 sn sonra: OrderHub_Analytics'te projection oluştu mu? (kafka-ui'de topic'te mesaj; veya
+     `SELECT * FROM OrderProjections` OrderHub_Analytics DB'sinde; Status = Created).
+
+2. **Kafka down → outbox birikir, RabbitMQ/order akışı ETKİLENMEZ:**
+   - `docker compose stop kafka`.
+   - `POST /api/orders` (birkaç kez) → istekler **200/201 döner** (OrderService sağlıklı kalır; Kafka
+     publish'i ayrı transport, HTTP yolunu bloklamaz).
+   - OrderService DB'sinde outbox: yeni Kafka satırları **ProcessedOnUtc = NULL** (publish edilemedi →
+     **kaybolmadı**, birikiyor). RabbitMQ transport'u (varsa command event'leri) ayrı → etkilenmez.
+   - ★ Acceptance: Kafka down RabbitMQ'yu/order HTTP akışını bozmaz **ve** event'ler outbox'ta korunur.
+
+3. **Kafka up → reconnect → drain → analytics yakalar:**
+   - `docker compose start kafka` (healthy olana dek bekle).
+   - OutboxProcessor reconnect olur → birikmiş Kafka satırlarını publish eder (ProcessedOnUtc dolar).
+   - AnalyticsService consumer tüketir → adım 2'de oluşturulan siparişlerin projection'ları belirir
+     (`SELECT COUNT(*) FROM OrderProjections` artar; kafka-ui'de consumer-group lag → 0).
 
 **Tahmini süre:** 10-14 saat
 

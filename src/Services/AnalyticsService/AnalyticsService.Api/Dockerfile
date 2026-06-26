@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage: Debian bookworm-slim (ICU içerir → SqlClient çalışır). Runtime patch'e pinli (8.0.11).
 # PaymentService Dockerfile pattern'iyle birebir. COPY listesi Analytics'in GERÇEK referanslarına göre
-# (Faz 3 stale-Dockerfile dersi): 4c-2 Contracts + EventBus, 4c-3 Inbox (dedup entity reuse) ref edildi →
-# COPY listesine eklendi (Inbox/Contracts → EventBus; başka building-block yok). Common ref edilmiyor.
+# (Faz 3 stale-Dockerfile dersi): 4c-2 Contracts + EventBus, 4c-3 Inbox (dedup entity reuse), 4d Application
+# (read-side query handler'lar) + Common (Result/Error, Application → Common) ref edildi → COPY listesine eklendi.
 
 # ---------- build ----------
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
@@ -10,6 +10,8 @@ WORKDIR /src
 
 # Restore katmanı: yalnızca csproj + lock + ortak props kopyalanır → kaynak değişince restore cache'i bozulmaz.
 COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+COPY ["src/BuildingBlocks/OrderHub.Common/OrderHub.Common.csproj", "src/BuildingBlocks/OrderHub.Common/"]
+COPY ["src/BuildingBlocks/OrderHub.Common/packages.lock.json", "src/BuildingBlocks/OrderHub.Common/"]
 COPY ["src/BuildingBlocks/OrderHub.EventBus/OrderHub.EventBus.csproj", "src/BuildingBlocks/OrderHub.EventBus/"]
 COPY ["src/BuildingBlocks/OrderHub.EventBus/packages.lock.json", "src/BuildingBlocks/OrderHub.EventBus/"]
 COPY ["src/BuildingBlocks/OrderHub.Contracts/OrderHub.Contracts.csproj", "src/BuildingBlocks/OrderHub.Contracts/"]
@@ -18,6 +20,8 @@ COPY ["src/BuildingBlocks/OrderHub.Inbox/OrderHub.Inbox.csproj", "src/BuildingBl
 COPY ["src/BuildingBlocks/OrderHub.Inbox/packages.lock.json", "src/BuildingBlocks/OrderHub.Inbox/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Domain/OrderHub.AnalyticsService.Domain.csproj", "src/Services/AnalyticsService/AnalyticsService.Domain/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Domain/packages.lock.json", "src/Services/AnalyticsService/AnalyticsService.Domain/"]
+COPY ["src/Services/AnalyticsService/AnalyticsService.Application/OrderHub.AnalyticsService.Application.csproj", "src/Services/AnalyticsService/AnalyticsService.Application/"]
+COPY ["src/Services/AnalyticsService/AnalyticsService.Application/packages.lock.json", "src/Services/AnalyticsService/AnalyticsService.Application/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Infrastructure/OrderHub.AnalyticsService.Infrastructure.csproj", "src/Services/AnalyticsService/AnalyticsService.Infrastructure/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Infrastructure/packages.lock.json", "src/Services/AnalyticsService/AnalyticsService.Infrastructure/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.Api/OrderHub.AnalyticsService.Api.csproj", "src/Services/AnalyticsService/AnalyticsService.Api/"]

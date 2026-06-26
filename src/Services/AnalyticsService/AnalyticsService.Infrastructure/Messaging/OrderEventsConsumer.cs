@@ -30,6 +30,16 @@ internal sealed class OrderEventsConsumer(
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(1); // transient hatada hot-loop önler.
+    private static readonly TimeSpan ConsumeErrorBackoff = TimeSpan.FromSeconds(2); // Consume-seviyesi hata → hot-loop + log spam önler.
+
+    // Consume() sırasında fresh-stack'te beklenen, GEÇİCİ broker hataları: topic henüz yok / leader seçilmedi.
+    // librdkafka subscription'ı canlı tutar → topic gelince re-subscribe gerekmeden fetch başlar (self-heal).
+    private static readonly HashSet<ErrorCode> TransientStartupCodes =
+    [
+        ErrorCode.UnknownTopicOrPart, // broker: topic mevcut değil (henüz oluşmadı).
+        ErrorCode.Local_UnknownTopic, // librdkafka local: metadata'da topic yok.
+        ErrorCode.LeaderNotAvailable, // partition leader seçimi sürüyor (startup).
+    ];
 
     private static readonly string CreatedType = typeof(OrderCreatedIntegrationEvent).FullName!;
     private static readonly string ConfirmedType = typeof(OrderConfirmedIntegrationEvent).FullName!;
@@ -54,6 +64,18 @@ internal sealed class OrderEventsConsumer(
                 {
                     break; // graceful shutdown.
                 }
+                catch (ConsumeException consumeException)
+                {
+                    // ★ Consume-SEVİYESİ hata: mesaj ALINAMADI (bağlantı/metadata/topic). HandleAsync mesaj-seviyesi
+                    // (mesaj alındıktan SONRA) hatasından AYRI katman — karıştırma. Fresh-stack'te topic henüz yok →
+                    // ele al + bekle + continue (abonelik canlı, topic gelince fetch başlar → consumer ÖLMEZ).
+                    if (await TryHandleConsumeErrorAsync(consumeException, stoppingToken))
+                    {
+                        continue;
+                    }
+
+                    throw; // fatal: librdkafka kurtarılamaz durumda → host crash → orchestrator restart (gizleme yok).
+                }
 
                 if (result?.Message is not null)
                 {
@@ -65,6 +87,45 @@ internal sealed class OrderEventsConsumer(
         {
             consumer.Close(); // final offset commit + partition release + group leave.
         }
+    }
+
+    // Confluent client'ın Consume() sırasında fırlattığı broker/bağlantı hatasını sınıflandırır.
+    // true → ele alındı (logla + backoff), çağıran continue eder (consumer ayakta kalır).
+    // false → fatal (kurtarılamaz) → çağıran rethrow eder (host crash, orchestrator restart).
+    private async Task<bool> TryHandleConsumeErrorAsync(ConsumeException exception, CancellationToken stoppingToken)
+    {
+        // librdkafka FATAL bayrağı: client kurtarılamaz (ör. idempotence violation, auth fatal). Yeni client gerek
+        // → sessizce sonsuz retry'da GİZLEME, yukarı fırlat (denge: fatal olmayan her şeyde hayatta kal, fatal'da çık).
+        if (exception.Error.IsFatal)
+        {
+            return false;
+        }
+
+        var code = exception.Error.Code;
+        if (TransientStartupCodes.Contains(code))
+        {
+            // Beklenen fresh-stack durumu: topic henüz yok. Warning (Error değil) — anomali değil, normal startup.
+            OrderEventsLog.TopicUnavailable(logger, code.ToString());
+        }
+        else
+        {
+            // Diğer non-fatal (geçici broker/ağ kesintisi): consumer hayatta kalsın ama Error seviyesinde GÖRÜNÜR
+            // olsun → sessiz sonsuz retry yok (gerçek bir sorun loglardan fark edilir).
+            OrderEventsLog.ConsumeError(logger, code.ToString(), exception);
+        }
+
+        // ★ Backoff: hot-loop'u ve log spam'i önler (her ms değil, döngü başına TEK log). stoppingToken'a duyarlı →
+        // shutdown'da hemen iptal; sonraki while koşulu döngüden çıkar (Close).
+        try
+        {
+            await Task.Delay(ConsumeErrorBackoff, stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // shutdown sırasında backoff iptal edildi → continue; dış while stoppingToken'ı görüp Close'a gider.
+        }
+
+        return true;
     }
 
     private async Task HandleAsync(ConsumeResult<string, string> result, CancellationToken cancellationToken)

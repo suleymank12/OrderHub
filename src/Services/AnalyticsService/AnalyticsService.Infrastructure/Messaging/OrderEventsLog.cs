@@ -35,4 +35,12 @@ internal static partial class OrderEventsLog
     [LoggerMessage(EventId = 6006, Level = LogLevel.Debug,
         Message = "Duplicate {MessageType} (event-id already processed); projection/revenue unchanged, offset committed")]
     public static partial void DuplicateSkipped(ILogger logger, string messageType);
+
+    [LoggerMessage(EventId = 6007, Level = LogLevel.Warning,
+        Message = "Order events topic unavailable ({ErrorCode}); subscription stays live, waiting for topic to appear (self-heal)")]
+    public static partial void TopicUnavailable(ILogger logger, string errorCode);
+
+    [LoggerMessage(EventId = 6008, Level = LogLevel.Error,
+        Message = "Kafka consume error ({ErrorCode}); consumer stays alive, retrying after backoff")]
+    public static partial void ConsumeError(ILogger logger, string errorCode, Exception exception);
 }

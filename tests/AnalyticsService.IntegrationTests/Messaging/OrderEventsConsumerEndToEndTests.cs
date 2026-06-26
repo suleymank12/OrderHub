@@ -168,6 +168,60 @@ public sealed class OrderEventsConsumerEndToEndTests(AnalyticsSqlServerContainer
         }
     }
 
+    [Fact]
+    public async Task Consumer_StartedBeforeTopicExists_SurvivesAndConsumesAfterTopicAppears()
+    {
+        var orderId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var groupId = $"test-{Guid.NewGuid()}";
+        var paidAtUtc = DateTime.UtcNow;
+
+        await using var provider = BuildProvider(groupId);
+        var hostedService = provider.GetServices<IHostedService>().Single();
+        var backgroundService = (BackgroundService)hostedService;
+
+        // ★ Topic HENÜZ YOK iken başlat — hiçbir şey produce edilmedi → order-hub.orders.events oluşmadı.
+        await hostedService.StartAsync(CancellationToken.None);
+        try
+        {
+            // ★ Topic-yok penceresi: Consume() UnknownTopicOrPart fırlatır. Fix'siz → ConsumeException kaçar,
+            // ExecuteTask FAULTED olur (host crash). Fix ile → yakala+backoff+continue, abonelik canlı → ayakta.
+            await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken.None);
+            backgroundService.ExecuteTask.Should().NotBeNull();
+            backgroundService.ExecuteTask!.IsFaulted.Should().BeFalse(
+                "topic yokken Consume() UnknownTopicOrPart fırlatır; consumer bunu yutup beklemeli, ölmemeli");
+            backgroundService.ExecuteTask.IsCompleted.Should().BeFalse("consumer hâlâ consume döngüsünde olmalı");
+
+            // ★ Şimdi produce et → topic OLUŞUR. Canlı abonelik fetch'e başlar (self-heal; re-subscribe gerekmez).
+            await ProduceAsync(new OrderCreatedIntegrationEvent
+            {
+                Id = Guid.NewGuid(), OccurredOnUtc = DateTime.UtcNow, OrderId = orderId,
+                CustomerId = customerId, Amount = 150m, Currency = "TRY",
+            });
+            await ProduceAsync(new OrderConfirmedIntegrationEvent
+            {
+                Id = Guid.NewGuid(), OccurredOnUtc = DateTime.UtcNow, OrderId = orderId,
+                CustomerId = customerId, Amount = 150m, Currency = "TRY",
+            });
+            await ProduceAsync(new OrderPaidIntegrationEvent
+            {
+                Id = Guid.NewGuid(), OccurredOnUtc = paidAtUtc, OrderId = orderId,
+            });
+
+            // ★ Self-heal kanıtı: topic GEÇ oluşmasına rağmen consumer ayakta kalıp tüketti → projection Paid.
+            var projection = await WaitForStatusAsync(orderId, OrderProjectionStatus.Paid, TimeSpan.FromSeconds(60));
+            projection.CustomerId.Should().Be(customerId);
+            projection.Total.Should().Be(150m);
+            projection.PaidAtUtc.Should().NotBeNull();
+        }
+        finally
+        {
+            await hostedService.StopAsync(CancellationToken.None);
+        }
+
+        await CleanupAsync(orderId);
+    }
+
     private async Task ProduceAsync(OrderStreamEvent integrationEvent)
     {
         using var producer = new ProducerBuilder<string, string>(new ProducerConfig
