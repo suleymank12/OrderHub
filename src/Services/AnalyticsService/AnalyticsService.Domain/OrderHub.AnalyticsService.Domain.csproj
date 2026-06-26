@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.AnalyticsService.Domain</AssemblyName>
+    <RootNamespace>OrderHub.AnalyticsService.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Read-side projection'lar self-contained (BCL primitive'leri) → OrderHub.Common'a bağımlılık YOK.
+       Aggregate/DomainEvent/DomainException kullanılmaz (Apply guard'ları 4c-3'te eklenirse o zaman değerlendirilir). -->
+
+</Project>

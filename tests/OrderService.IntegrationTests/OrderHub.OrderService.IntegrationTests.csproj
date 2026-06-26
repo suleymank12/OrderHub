@@ -22,6 +22,9 @@
     <!-- RabbitMQ smoke testi (3b-2): gerçek broker container'ı + gerçek UsingRabbitMq transport. -->
     <PackageReference Include="Testcontainers.RabbitMq" />
     <PackageReference Include="MassTransit.RabbitMQ" />
+    <!-- Faz 4: gerçek Kafka container (1:N canlı testi) + ApiTestFactory'de IProducer'ı mock'lamak için Confluent.Kafka. -->
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Testcontainers.Kafka" />
   </ItemGroup>
 
 </Project>

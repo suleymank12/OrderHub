@@ -25,6 +25,18 @@ services:
       - "5672:5672"   # AMQP — host'tan broker erişimi (debug / 3d test repro)
       - "15672:15672" # Management UI → http://localhost:15672 (guest yerine .env user/pass)
 
+  kafka:
+    ports:
+      - "9092:9094" # host → EXTERNAL listener (advertised localhost:9092); debug/test repro (Faz 4)
+
+  kafka-ui:
+    ports:
+      - "8088:8080" # Kafka UI → http://localhost:8088 (topic/consumer-group/lag gözlemi)
+
   paymentservice:
     ports:
       - "8082:8080" # Swagger → http://localhost:8082/swagger (orderservice 8080 ile çakışmasın)
+
+  analyticsservice:
+    ports:
+      - "8083:8080" # Swagger → http://localhost:8083/swagger (order 8080 / payment 8082 ile çakışmasın)

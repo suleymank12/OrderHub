@@ -55,14 +55,20 @@ internal sealed class OutboxInterceptor(OutboxEventRegistry registry) : SaveChan
 
         foreach (var domainEvent in domainEvents)
         {
-            if (!registry.TryTranslate(domainEvent, out var integrationEvent))
+            if (!registry.TryTranslate(domainEvent, out var integrationEvents))
             {
                 continue; // Integration karşılığı yok → olay yalnız in-process kalır.
             }
 
-            var (type, payload) = OutboxMessageSerializer.Serialize(integrationEvent);
-            context.Set<OutboxMessage>().Add(
-                OutboxMessage.Create(integrationEvent.Id, type, payload, integrationEvent.OccurredOnUtc));
+            // 1:N fan-out (ADR-0006 Karar 4): kayıt sırası = Ordinal (0,1,…). Id == EventId sabit; (Id, Ordinal)
+            // composite PK çakışmayı engeller. Tek-hedef → tek satır (Ordinal 0), geriye uyumlu.
+            for (var ordinal = 0; ordinal < integrationEvents.Count; ordinal++)
+            {
+                var integrationEvent = integrationEvents[ordinal];
+                var (type, payload) = OutboxMessageSerializer.Serialize(integrationEvent);
+                context.Set<OutboxMessage>().Add(
+                    OutboxMessage.Create(integrationEvent.Id, type, payload, integrationEvent.OccurredOnUtc, ordinal));
+            }
         }
     }
 }

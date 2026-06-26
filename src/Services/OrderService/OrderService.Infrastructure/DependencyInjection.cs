@@ -2,7 +2,9 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OrderHub.Contracts.Orders;
 using OrderHub.Contracts.Payments;
+using OrderHub.EventBus.Kafka;
 using OrderHub.Inbox;
 using OrderHub.Inbox.Consuming;
 using OrderHub.OrderService.Application.Abstractions.Persistence;
@@ -16,6 +18,7 @@ using OrderHub.OrderService.Infrastructure.Persistence.Interceptors;
 using OrderHub.OrderService.Infrastructure.Persistence.Repositories;
 using OrderHub.OrderService.Infrastructure.Scheduling;
 using OrderHub.Outbox;
+using OrderHub.Outbox.Translation;
 using OrderHub.EventBus.RabbitMq;
 
 namespace OrderHub.OrderService.Infrastructure;
@@ -28,6 +31,8 @@ public static class DependencyInjection
 {
     private const string ConnectionStringName = "DefaultConnection";
     private const string RabbitMqSectionName = "RabbitMq";
+    private const string KafkaBootstrapServersKey = "Kafka:BootstrapServers";
+    private const string DefaultKafkaBootstrapServers = "localhost:9092"; // local/test default; compose env override.
 
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
@@ -42,19 +47,10 @@ public static class DependencyInjection
                 $"Connection string '{ConnectionStringName}' is not configured.");
         }
 
-        // Outbox WRITE yolu (ADR-0002 Faz 3): OrderConfirmed → ProcessPaymentIntegrationEvent çevirisi +
-        // pre-commit OutboxInterceptor. Çeviri saf (ekstra DB okuması yok); Id = EventId (uçtan uca dedup,
-        // Karar 4). Money sızdırılmaz → Amount/Currency primitive. Processor + RabbitMQ 3.6'da (write-only).
-        services.AddOutboxWriter(registry => registry.Map<OrderConfirmed>(domainEvent =>
-            new ProcessPaymentIntegrationEvent
-            {
-                Id = domainEvent.EventId,
-                OccurredOnUtc = domainEvent.OccurredOnUtc,
-                OrderId = domainEvent.OrderId,
-                CustomerId = domainEvent.CustomerId,
-                Amount = domainEvent.Total.Amount,
-                Currency = domainEvent.Total.Currency.ToString(),
-            }));
+        // Outbox WRITE yolu (ADR-0002/0006): domain olay → integration olay çevirileri (saf, ekstra DB okuması yok;
+        // Id = EventId uçtan uca dedup, Karar 4). OrderConfirmed 1:N fan-out eder (RabbitMQ command + Kafka event);
+        // OrderCreated/Paid/Cancelled Faz 4'te Kafka'ya. Money sızdırılmaz → Amount/Currency primitive.
+        services.AddOutboxWriter(ConfigureOutboxMaps);
 
         // Domain event dispatcher: scoped IPublisher (MediatR) bağımlılığı → scoped interceptor (ADR-0002).
         services.AddScoped<DispatchDomainEventsInterceptor>();
@@ -87,6 +83,13 @@ public static class DependencyInjection
                 busConfigurator.AddConsumer<PaymentFailedIntegrationEventConsumer>();
             },
             (rabbit, context) => rabbit.UseConsumeFilter(typeof(InboxConsumeFilter<>), context));
+
+        // Kafka event-stream routing (ADR-0006): AddRabbitMqEventBus'tan SONRA → processor'ın gördüğü
+        // IIntegrationEventPublisher routing publisher'a evrilir (IKafkaEvent → Kafka, aksi → RabbitMQ).
+        // Bootstrap servers config'ten (compose'da env override, K3 kapsamı dışı ama ortama göre değişir).
+        var kafkaBootstrapServers = configuration[KafkaBootstrapServersKey] ?? DefaultKafkaBootstrapServers;
+        services.AddKafkaRouting(kafkaBootstrapServers);
+
         services.AddOutboxProcessor();
 
         services.AddScoped<IOrderRepository, OrderRepository>();
@@ -113,5 +116,56 @@ public static class DependencyInjection
         services.AddHostedService<RecurringJobRegistrar>();
 
         return services;
+    }
+
+    // Domain olay → integration olay outbox çevirileri (saf factory'ler; Id = EventId, ADR-0002 Karar 4 invariant
+    // registry tarafından runtime doğrulanır). OrderConfirmed 1:N: ProcessPayment (RabbitMQ, Ordinal 0) +
+    // OrderConfirmed Kafka (Ordinal 1). OrderCreated/Paid/Cancelled yeni 1:1 Kafka stream'leri (ADR-0006).
+    private static void ConfigureOutboxMaps(OutboxEventRegistryBuilder registry)
+    {
+        registry.Map<OrderConfirmed>(domainEvent => new ProcessPaymentIntegrationEvent
+        {
+            Id = domainEvent.EventId,
+            OccurredOnUtc = domainEvent.OccurredOnUtc,
+            OrderId = domainEvent.OrderId,
+            CustomerId = domainEvent.CustomerId,
+            Amount = domainEvent.Total.Amount,
+            Currency = domainEvent.Total.Currency.ToString(),
+        });
+
+        registry.Map<OrderConfirmed>(domainEvent => new OrderConfirmedIntegrationEvent
+        {
+            Id = domainEvent.EventId,
+            OccurredOnUtc = domainEvent.OccurredOnUtc,
+            OrderId = domainEvent.OrderId,
+            CustomerId = domainEvent.CustomerId,
+            Amount = domainEvent.Total.Amount,
+            Currency = domainEvent.Total.Currency.ToString(),
+        });
+
+        registry.Map<OrderCreated>(domainEvent => new OrderCreatedIntegrationEvent
+        {
+            Id = domainEvent.EventId,
+            OccurredOnUtc = domainEvent.OccurredOnUtc,
+            OrderId = domainEvent.OrderId,
+            CustomerId = domainEvent.CustomerId,
+            Amount = domainEvent.Total.Amount,
+            Currency = domainEvent.Total.Currency.ToString(),
+        });
+
+        registry.Map<OrderPaid>(domainEvent => new OrderPaidIntegrationEvent
+        {
+            Id = domainEvent.EventId,
+            OccurredOnUtc = domainEvent.OccurredOnUtc,
+            OrderId = domainEvent.OrderId,
+        });
+
+        registry.Map<OrderCancelled>(domainEvent => new OrderCancelledIntegrationEvent
+        {
+            Id = domainEvent.EventId,
+            OccurredOnUtc = domainEvent.OccurredOnUtc,
+            OrderId = domainEvent.OrderId,
+            Reason = domainEvent.Reason,
+        });
     }
 }

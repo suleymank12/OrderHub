@@ -9,8 +9,15 @@
          RabbitMQ paketi MassTransit'i transitively getirir; ikisi de explicit → niyet açık. -->
     <PackageReference Include="MassTransit" />
     <PackageReference Include="MassTransit.RabbitMQ" />
-    <!-- IServiceCollection extension (AddRabbitMqEventBus) için abstraction-only DI paketi. -->
+    <!-- Kafka event-stream producer (ADR-0006 Karar 2): doğrudan Confluent.Kafka, idempotent producer. -->
+    <PackageReference Include="Confluent.Kafka" />
+    <!-- IServiceCollection extension (AddRabbitMqEventBus / AddKafkaRouting) + [FromKeyedServices] için DI paketi. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Routing/Kafka publisher'ları internal → odaklı unit test projesine açılır (encapsulation korunur). -->
+    <InternalsVisibleTo Include="OrderHub.EventBus.UnitTests" />
   </ItemGroup>
 
 </Project>

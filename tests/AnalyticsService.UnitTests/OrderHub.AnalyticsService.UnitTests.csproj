@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.AnalyticsService.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.AnalyticsService.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\AnalyticsService\AnalyticsService.Domain\OrderHub.AnalyticsService.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Services\AnalyticsService\AnalyticsService.Application\OrderHub.AnalyticsService.Application.csproj" />
+  </ItemGroup>
+
+  <!-- IsTestProject / Test.Sdk / xunit / runner / coverlet + Using Xunit/FluentAssertions
+       → tests/Directory.Build.props (ortak). Burada sadece projeye özel paketler. -->
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+</Project>

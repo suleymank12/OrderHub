@@ -43,6 +43,8 @@
     <!-- ConfigurationBinder.Get<T>(): Infrastructure composition root'ta RabbitMqOptions'ı config'ten bağlar
          (Abstractions Get<T> içermez). -->
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+    <!-- IConfiguration + GetConnectionString (Infrastructure DI); abstraction-only (provider Api'de). -->
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Background Jobs (Hangfire)">
@@ -62,6 +64,15 @@
          System.Text.Json'dır (Newtonsoft YOK → §3 temiz, ADR-0004 Karar 3). -->
     <PackageVersion Include="MassTransit" Version="8.5.9" />
     <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.9" />
+  </ItemGroup>
+
+  <ItemGroup Label="Event Streaming (Kafka)">
+    <!-- Confluent.Kafka 2.x (CLAUDE.md §3 stack kilidi): Kafka event-stream için doğrudan client (MassTransit
+         rider değil, ADR-0006 Karar 2 — idempotent producer acks=all + enable.idempotence=true doğrudan kontrol).
+         librdkafka native binary'sini taşır; .NET 8 / linux-x64 (compose) + win-x64 (local) destekli. -->
+    <PackageVersion Include="Confluent.Kafka" Version="2.6.1" />
+    <!-- Gerçek Kafka container'ı (4b integration): MsSql/RabbitMq ile aynı Testcontainers hattı. -->
+    <PackageVersion Include="Testcontainers.Kafka" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="API / Auth / Logging / Health">

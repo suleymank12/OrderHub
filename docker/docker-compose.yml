@@ -52,6 +52,55 @@ services:
     networks:
       - orderhub
 
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1 # pinned; Testcontainers fixture'larıyla AYNI major.minor (test ↔ compose tutarlı). KRaft (Zookeeper-less).
+    environment:
+      # --- KRaft (Zookeeper YOK): tek node hem broker hem controller ---
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # --- Listener'lar: PLAINTEXT (docker ağı içi), CONTROLLER (KRaft quorum), EXTERNAL (host debug) ---
+      # İç servisler kafka:9092'ye bağlanır; host (override port) localhost:9092 → EXTERNAL listener'a forward.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # --- Single-broker dev: replication/ISR 1 (ROADMAP §4.2); rebalance delay 0 → consumer hızlı katılır ---
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true" # dev: producer ilk publish'te order-hub.orders.events topic'i otomatik oluşsun
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # Sabit CLUSTER_ID: volume kalıcı → fresh-volume dışında storage tekrar format'lanmaz (metadata tutarlı).
+      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+    volumes:
+      - kafka-data:/var/lib/kafka/data # KRaft metadata + log persistence (broker restart'ta offset/log kayıp olmasın)
+    healthcheck:
+      # Broker GERÇEKTEN hazır mı (process up ≠ API ready, Faz 3 dersi): broker'a bağlanıp topic listeleyebiliyor mu.
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 60s # KRaft soğuk start (storage format + quorum election) RabbitMQ'dan yavaş → cömert
+    restart: unless-stopped # uzun ömürlü infra
+    networks:
+      - orderhub
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2 # pinned. Opsiyonel gözlem aracı (RabbitMQ management UI eşi).
+    environment:
+      KAFKA_CLUSTERS_0_NAME: orderhub
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      kafka:
+        condition: service_healthy # broker hazır olmadan UI bağlanmaya çalışıp gürültü yapmasın
+    # restart/healthcheck YOK: salt gözlem aracı, UI down = stack down değil (altyapı değil).
+    networks:
+      - orderhub
+
   orderservice:
     build:
       context: .. # repo kökü
@@ -65,6 +114,9 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USER}
       RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      # Faz 4 (4b): OrderService domain event'lerini Kafka'ya stream eder (outbox 1:N fan-out). appsettings dev
+      # default localhost:9092 → compose'da broker host'una override. Yoksa OrderCreated→Kafka publish başarısız olur.
+      Kafka__BootstrapServers: kafka:9092
       # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
@@ -73,6 +125,8 @@ services:
         condition: service_healthy # şema migration'ı için DB hazır olmalı
       rabbitmq:
         condition: service_healthy # broker hazır olmadan publish/consume bağlanmasın
+      kafka:
+        condition: service_healthy # outbox processor Kafka'ya publish eder → broker hazır olmalı
       seq:
         condition: service_started
     # restart YOK: startup/migration hatası restart loop'unda gizlenmesin (görünür kalsın).
@@ -103,6 +157,33 @@ services:
       seq:
         condition: service_started
     # restart YOK: startup/migration hatası restart loop'unda gizlenmesin (OrderService kuralı).
+    # PaymentService Kafka'ya PRODUCE ETMEZ (outbox yalnız RabbitMQ event'leri) → Kafka env/depends GEREKMEZ.
+    networks:
+      - orderhub
+
+  analyticsservice:
+    build:
+      context: .. # repo kökü (order/payment ile aynı context)
+      dockerfile: src/Services/AnalyticsService/AnalyticsService.Api/Dockerfile
+    environment:
+      # ADR-0001: local dev Development'ta (Swagger + startup migration). Database-per-service → ÜÇÜNCÜ DB (OrderHub_Analytics).
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Analytics;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      JwtSettings__Secret: ${JWT_SECRET} # .env'den (K3); read-API JWT doğrular (token üretmez).
+      # Kafka consumer (OrderEventsConsumer): appsettings dev default localhost:9092 → compose'da broker host'una override.
+      # GroupId appsettings'te (analytics-service.order-events) → override gerekmez.
+      Kafka__BootstrapServers: kafka:9092
+      # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+    depends_on:
+      sqlserver:
+        condition: service_healthy # OrderHub_Analytics migration'ı için DB hazır olmalı
+      kafka:
+        condition: service_healthy # consumer bağlanmadan önce broker hazır olmalı
+      seq:
+        condition: service_started
+    # restart YOK: startup/migration hatası görünür kalsın (order/payment kuralı).
     networks:
       - orderhub
 
@@ -114,3 +195,4 @@ volumes:
   sql-data:
   seq-data:
   rabbitmq-data:
+  kafka-data:

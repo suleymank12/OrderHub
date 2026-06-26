@@ -10,7 +10,7 @@ namespace OrderHub.Contracts.Payments;
 /// Yalnızca primitive alanlar — domain tipi sızdırılmaz.
 /// </para>
 /// </summary>
-public sealed record PaymentFailedIntegrationEvent : IIntegrationEvent
+public sealed record PaymentFailedIntegrationEvent : IRabbitMqEvent
 {
     /// <summary>Olay kimliği = kaynak <c>PaymentFailed.EventId</c> (dedup anahtarı).</summary>
     public required Guid Id { get; init; }

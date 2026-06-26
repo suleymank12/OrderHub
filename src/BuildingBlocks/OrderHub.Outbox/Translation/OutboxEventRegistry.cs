@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using OrderHub.Common.Primitives;
 using OrderHub.EventBus;
 
@@ -12,37 +11,46 @@ namespace OrderHub.Outbox.Translation;
 /// </summary>
 public sealed class OutboxEventRegistry
 {
-    private readonly IReadOnlyDictionary<Type, Func<IDomainEvent, IIntegrationEvent>> _factories;
+    private readonly IReadOnlyDictionary<Type, IReadOnlyList<Func<IDomainEvent, IIntegrationEvent>>> _factories;
 
-    internal OutboxEventRegistry(IReadOnlyDictionary<Type, Func<IDomainEvent, IIntegrationEvent>> factories)
+    internal OutboxEventRegistry(
+        IReadOnlyDictionary<Type, IReadOnlyList<Func<IDomainEvent, IIntegrationEvent>>> factories)
     {
         _factories = factories;
     }
 
     /// <summary>
-    /// <paramref name="domainEvent"/> için kayıtlı çeviri varsa integration olayını üretir. Üretim sonrası
-    /// <c>integrationEvent.Id == domainEvent.EventId</c> invariantını <b>runtime'da doğrular</b> (ADR-0002
-    /// Karar 4): eşleşmezse uçtan uca dedup zinciri kopardı → fail-fast.
+    /// <paramref name="domainEvent"/> için kayıtlı çeviri(ler) varsa integration olaylarını <b>kayıt sırasıyla</b>
+    /// üretir (1:1 → tek; 1:N fan-out → N, ADR-0006 Karar 4). Her biri için <c>integrationEvent.Id ==
+    /// domainEvent.EventId</c> invariantını <b>runtime'da doğrular</b> (ADR-0002 Karar 4 — tüm fan-out hedefleri
+    /// aynı EventId'yi taşır; eşleşmezse uçtan uca dedup zinciri kopardı → fail-fast). Karşılığı yoksa boş döner.
     /// </summary>
-    public bool TryTranslate(IDomainEvent domainEvent, [NotNullWhen(true)] out IIntegrationEvent? integrationEvent)
+    public bool TryTranslate(IDomainEvent domainEvent, out IReadOnlyList<IIntegrationEvent> integrationEvents)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
 
-        if (!_factories.TryGetValue(domainEvent.GetType(), out var factory))
+        if (!_factories.TryGetValue(domainEvent.GetType(), out var factories))
         {
-            integrationEvent = null;
+            integrationEvents = [];
             return false;
         }
 
-        integrationEvent = factory(domainEvent);
-
-        if (integrationEvent.Id != domainEvent.EventId)
+        var translated = new List<IIntegrationEvent>(factories.Count);
+        foreach (var factory in factories)
         {
-            throw new InvalidOperationException(
-                $"Outbox translation invariant violated for '{domainEvent.GetType().Name}': integration event " +
-                $"Id '{integrationEvent.Id}' must equal domain EventId '{domainEvent.EventId}' (end-to-end dedup).");
+            var integrationEvent = factory(domainEvent);
+
+            if (integrationEvent.Id != domainEvent.EventId)
+            {
+                throw new InvalidOperationException(
+                    $"Outbox translation invariant violated for '{domainEvent.GetType().Name}': integration event " +
+                    $"Id '{integrationEvent.Id}' must equal domain EventId '{domainEvent.EventId}' (end-to-end dedup).");
+            }
+
+            translated.Add(integrationEvent);
         }
 
+        integrationEvents = translated;
         return true;
     }
 }

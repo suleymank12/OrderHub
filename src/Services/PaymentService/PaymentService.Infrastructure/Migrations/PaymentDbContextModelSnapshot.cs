@@ -44,6 +44,9 @@ namespace OrderHub.PaymentService.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("int");
+
                     b.Property<string>("Error")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
@@ -66,7 +69,7 @@ namespace OrderHub.PaymentService.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id", "Ordinal");
 
                     b.HasIndex("ProcessedOnUtc", "OccurredOnUtc")
                         .HasDatabaseName("IX_OutboxMessages_ProcessedOnUtc_OccurredOnUtc");

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.AnalyticsService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.AnalyticsService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- AnalyticsDbContext internal (§9); yalnızca integration test assembly'sine açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.AnalyticsService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnalyticsService.Domain\OrderHub.AnalyticsService.Domain.csproj" />
+    <!-- 4d: read-side port (IAnalyticsReadRepository) implementasyonu için. Infrastructure → Application (Clean Arch:
+         Application Infrastructure'a ref VERMEZ; bağımlılık tek yönlü Infra → App). -->
+    <ProjectReference Include="..\AnalyticsService.Application\OrderHub.AnalyticsService.Application.csproj" />
+    <!-- 4c-2: Kafka consumer order-stream event'lerini (OrderStreamEvent + 4 order event) okur. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
+    <!-- IKafkaEvent + KafkaMessageHeaders (type-header dispatch). EventBus, Confluent.Kafka'yı transitively getirir. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- 4c-3: consumer-side idempotency için InboxMessage ENTITY'si + IInboxDbContext + config reuse (ADR-0006 consumer
+         note). InboxConsumeFilter (MassTransit) KULLANILMAZ — yalnız dedup tablosu (event-id). MassTransit transitive gelir. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- IHostedService (OrderEventsConsumer) + AddHostedService için. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <!-- Kafka consumer (IConsumer) doğrudan kullanım (EventBus transitive getirse de niyet açık). -->
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: yalnız migration üretimi; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

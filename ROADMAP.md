@@ -244,7 +244,7 @@ Faz 7: Docs + CI           → README + ADR + diagrams + GitHub Actions
 
 ## 4.1 Mimari karar — neden hem RabbitMQ hem Kafka?
 
-ADR yaz: `docs/adr/0001-rabbitmq-vs-kafka.md`. Özet:
+ADR yaz: `docs/adr/0006-kafka-event-streaming.md` (0001 zaten migration-in-docker'a ait → çakışma giderildi). Özet:
 - **RabbitMQ:** Command-style, point-to-point, "bu iş yapılmalı" semantiği. Retry/DLQ kolay. Düşük throughput'lu critical messaging.
 - **Kafka:** Event log, pub-sub, replay edilebilir, yüksek throughput. Multiple consumer'lar bağımsız offset'le aynı stream'i okur. Analytics, audit, future consumer için.
 
@@ -252,57 +252,115 @@ Mülakatta savunacağın asıl argüman bu — ADR'yi ciddi yaz.
 
 ## 4.2 Kafka topology
 
-- [ ] Topic: `order-hub.orders.events`, partition count 3, replication factor 1 (single-broker dev)
-- [ ] Topic: `order-hub.payments.events`
-- [ ] Schema: JSON (Avro/Protobuf overkill bu scope için — ADR'de açıkla)
-- [ ] Key: `OrderId` (aynı order eventleri aynı partition'a → ordering garantisi)
+- [x] Topic: `order-hub.orders.events`, replication factor 1 (single-broker dev) — compose auto-create.
+- [ ] Topic: `order-hub.payments.events` → **bilinçli ertelendi (ADR-0006 Karar 5, YAGNI)**: topolojide tanımlı ama üretici/consumer yok (PaymentService Kafka'ya produce etmez); audit consumer gelince doldurulur.
+- [x] Schema: JSON (Avro/Protobuf overkill bu scope için — ADR-0006 Karar 5)
+- [x] Key: `OrderId` (aynı order eventleri aynı partition'a → ordering garantisi) — `IKafkaEvent.PartitionKey`.
+
+> **Not (4-final, dürüstlük):** `order-hub.orders.events` dev'de `KAFKA_AUTO_CREATE_TOPICS_ENABLE` ile
+> oluşur → **tek partition** (§4.2 "partition count 3" prod-provisioning hedefiydi). Per-order ordering
+> partition sayısından **bağımsız** korunur (key=OrderId → aynı order hep aynı partition). Single-broker /
+> single-consumer dev'de 3-partition parallelism gereksiz; prod'da `KAFKA_NUM_PARTITIONS=3` veya pre-provision
+> ile sağlanır. Gerçek deviation: 3 değil 1 partition — gizlenmedi, fonksiyonel etki yok.
 
 ## 4.3 Producer side — OrderService
 
-- [ ] Outbox processor şimdi iki target'a publish ediyor:
-  - Command event'leri → RabbitMQ
-  - Domain event'leri (notification event'leri) → Kafka
-- [ ] Event sınıflandırma: `IRabbitMqEvent`, `IKafkaEvent` marker interface'leri (veya event tipine göre routing)
-- [ ] Confluent.Kafka producer config: idempotent producer, `acks=all`, `enable.idempotence=true`
+- [x] Outbox processor şimdi iki target'a publish ediyor (`RoutingIntegrationEventPublisher`):
+  - Command event'leri → RabbitMQ (`IRabbitMqEvent`)
+  - Domain event'leri (notification event'leri) → Kafka (`IKafkaEvent`)
+- [x] Event sınıflandırma: `IRabbitMqEvent`, `IKafkaEvent` marker interface'leri (tipine göre routing)
+- [x] Confluent.Kafka producer config: idempotent producer, `Acks=All`, `EnableIdempotence=true` (ADR-0006 Karar 2)
 
 ## 4.4 AnalyticsService
 
-- [ ] Yeni servis, Clean Architecture
-- [ ] Kendi DB'si: `OrderHub_Analytics` (read-optimized schema)
-- [ ] Kafka consumer (HostedService): `OrderEventsConsumer`
-- [ ] Tablo: `OrderProjection` (id, customer_id, status, total, created_at, paid_at, last_updated)
-- [ ] Tablo: `DailyRevenueProjection` (date, total_orders, total_revenue, avg_order_value)
-- [ ] Consumer offset commit: manual commit, **işlendikten sonra** (at-least-once delivery)
-- [ ] Idempotent projection update (upsert by event id)
+- [x] Yeni servis, Clean Architecture (Domain/Application/Infrastructure/Api)
+- [x] Kendi DB'si: `OrderHub_Analytics` (read-optimized schema, database-per-service)
+- [x] Kafka consumer (HostedService): `OrderEventsConsumer` (+ topic-yok startup self-heal, 4e)
+- [x] Tablo: `OrderProjection` (id, customer_id, status, total, created_at, paid_at, last_updated)
+- [x] Tablo: `DailyRevenueProjection` (date, total_orders, total_revenue, avg_order_value)
+- [x] Consumer offset commit: manual commit, **işlendikten sonra** (DB-commit → offset-commit, at-least-once)
+- [x] Idempotent projection update (event-id dedup, `InboxMessage` entity reuse — ADR-0006 Karar 6)
 
 ## 4.5 Analytics API
 
-- [ ] `GET /api/analytics/orders/{id}` — order projection
-- [ ] `GET /api/analytics/revenue/daily?from=&to=` — günlük revenue
-- [ ] **Sadece okuma**, hiçbir write endpoint yok
+- [x] `GET /api/analytics/orders/{id}` — order projection (JWT korumalı)
+- [x] `GET /api/analytics/revenue/daily?from=&to=` — günlük revenue (JWT korumalı)
+- [x] **Sadece okuma**, hiçbir write endpoint yok (CQRS read-side; projection yalnız consumer ile güncellenir)
 
 ## 4.6 docker-compose güncelleme
 
-- [ ] Kafka (Confluent kafka:7.x KRaft mode — Zookeeper-less, daha modern)
-- [ ] Schema registry **eklemiyoruz** (JSON kullanıyoruz, ADR'de gerekçe var)
-- [ ] Kafka UI (provectuslabs/kafka-ui) — debug için
-- [ ] `analyticsservice` build
+- [x] Kafka (Confluent cp-kafka:7.6.1 KRaft mode — Zookeeper-less; Testcontainers fixture'larıyla aynı major.minor)
+- [x] Schema registry **eklemiyoruz** (JSON kullanıyoruz, ADR-0006'da gerekçe var)
+- [x] Kafka UI (provectuslabs/kafka-ui:v0.7.2) — debug için
+- [x] `analyticsservice` build (OrderHub_Analytics, Kafka consumer + read-API; depends_on sqlserver+kafka healthy)
 
 ## 4.7 Testler
 
-- [ ] Unit: projection update logic, idempotency
-- [ ] Integration (Testcontainers + Kafka container):
-  - Order created → 1 sn içinde AnalyticsService'te projection oluştu
-  - Aynı event iki kez geldi → projection bir kez update oldu
-  - Consumer lag senaryosu: 100 event publish → hepsi sırayla işlendi
+- [x] Unit: read-side query logic (`GetOrderProjectionById` 4, `GetDailyRevenue` 3 + validator 3 = 10 unit).
+  > **Dürüstlük:** Projection *update logic* + *idempotency/dedup* için **pure unit test YOK** — bilinçli olarak
+  > **gerçek Kafka integration** ile kanıtlandı (`DuplicateOrderPaid_DedupPreventsDoubleRevenue`): consumer I/O-bound,
+  > mocklu unit'ten daha anlamlı (K2: suni unit eklemedik). Projection domain davranışı (MarkConfirmed/MarkPaid/
+  > AddPaidOrder) consumer e2e ile uçtan uca koşuyor.
+- [x] Integration (Testcontainers + gerçek Kafka container):
+  - [x] Order created → AnalyticsService'te projection oluştu (`Consumer_AppliesCreatedConfirmedPaidInOrder…`)
+  - [x] Aynı event iki kez geldi → projection/revenue bir kez (`DuplicateOrderPaid_DedupPreventsDoubleRevenue…`)
+  - [x] (4e) Topic-yok startup yarışı → consumer self-heal (`Consumer_StartedBeforeTopicExists_SurvivesAndConsumes…`)
+  - [ ] **Consumer lag: 100 event publish → hepsi sırayla** — YAZILMADI (dürüst boşluk). Ordering + at-least-once
+        zaten kanıtlı: lifecycle sıra testi (tek partition Created→Confirmed→Paid) + `MultipleOrdersPaidSameDay`
+        (revenue aggregate) + offset-commit-after kanıtı. Açık throughput/volume testi Faz 5 follow-up — gizlenmiyor.
 
 ## 4.8 Kabul Kriteri
 
 - ✅ Order create/confirm/pay → AnalyticsService'te projection güncelleniyor
+  → **Kanıt:** `Consumer_AppliesCreatedConfirmedPaidInOrder_ThenCommitsOffsetAfterProcessing` (gerçek Kafka,
+  Created→Confirmed→Paid → projection status=Paid). HTTP'de yalnız OrderCreated tetiklenebilir (4-final fresh-volume
+  smoke: order create → projection Created); Confirm/Pay domain seam'i integration testlerinde (§4.8.1 notu).
 - ✅ `GET /api/analytics/revenue/daily` doğru aggregate dönüyor
+  → **Kanıt:** `MultipleOrdersPaidSameDay_DailyRevenueAggregatesCorrectly` (100+200+300 → total 600, avg 200) +
+  `AnalyticsEndpointsTests` (API read-side, JWT).
 - ✅ Kafka down olsa bile outbox kaybetmiyor
-- ✅ ADR yazılmış ve mantıklı
-- ✅ 400 satır + test coverage hedefleri tutmuş
+  → **Kanıt (dürüst):** **Otomatik Kafka-down testi YOK.** Outbox **transport-agnostik** aynı mekanizma — RabbitMQ
+  broker-down otomatik testi (Faz 3 §3.8 / 3d-4b) outbox-birikir-recover'ı zaten kanıtlar; Kafka publish **aynı**
+  `OutboxProcessor` + `RoutingPublisher` + transient/poison ayrımı + retry yolundan geçer (Kafka'ya özel kayıp yolu
+  yok). Ek kanıt: §4.8.1 **manuel compose broker-outage demo'su**. Kafka-özel otomatik test bilinçli yazılmadı
+  (mekanizma ortak; suni dallanma testi K2'ye girerdi) — gizlenmiyor.
+- ✅ ADR yazılmış ve mantıklı → `docs/adr/0006-kafka-event-streaming.md` (6 karar: RabbitMQ+Kafka ayrımı, idempotent
+  producer, 1:N composite outbox PK, routing publisher, topology/JSON, consumer dedup+offset-after).
+- ✅ 400 satır + test coverage hedefleri tutmuş → `check-acceptance.ps1` K1 yeşil; coverage `scripts/coverage.ps1`
+  (rakam PR metninde). 306 test, build 0/0.
+
+### 4.8.1 Manuel demo — "Kafka down → outbox kaybetmez" (compose, broker-outage)
+
+> Faz 3 §3.8 RabbitMQ broker-outage demo'sunun Kafka karşılığı; **compose seviyesinde manuel acceptance**.
+> Tüm container'lar `cd docker && docker compose up -d --build` ile ayakta. Portlar override'dan
+> (order 8080, analytics 8083, kafka-ui 8088, seq 8081).
+>
+> **Not (mevcut build):** `Order.Confirm()`/`MarkPaid()` HTTP ile tetiklenmez (yalnız domain seam'i —
+> integration testlerinde). Bu yüzden HTTP ile üretilebilen tek lifecycle olayı **OrderCreated**'tır →
+> Analytics `OrderProjection` **Created** durumunda oluşur. Confirm→Pay→Paid + DailyRevenue akışı 4c-3
+> integration testleriyle (gerçek Kafka container) kanıtlıdır. Demo bu yüzden OrderCreated→Kafka→projection
+> dayanıklılığını gösterir; tam Paid akışı testlerde.
+
+1. **Baseline (Kafka up):**
+   - `POST http://localhost:8080/api/dev/token` (body `{"userId":"<guid>"}`) → JWT al.
+   - `POST http://localhost:8080/api/orders` (Bearer) → `orderId`. → OrderService `OrderCreated`'ı Kafka
+     outbox'una yazar; OutboxProcessor `order-hub.orders.events`'e publish eder.
+   - ~1 sn sonra: OrderHub_Analytics'te projection oluştu mu? (kafka-ui'de topic'te mesaj; veya
+     `SELECT * FROM OrderProjections` OrderHub_Analytics DB'sinde; Status = Created).
+
+2. **Kafka down → outbox birikir, RabbitMQ/order akışı ETKİLENMEZ:**
+   - `docker compose stop kafka`.
+   - `POST /api/orders` (birkaç kez) → istekler **200/201 döner** (OrderService sağlıklı kalır; Kafka
+     publish'i ayrı transport, HTTP yolunu bloklamaz).
+   - OrderService DB'sinde outbox: yeni Kafka satırları **ProcessedOnUtc = NULL** (publish edilemedi →
+     **kaybolmadı**, birikiyor). RabbitMQ transport'u (varsa command event'leri) ayrı → etkilenmez.
+   - ★ Acceptance: Kafka down RabbitMQ'yu/order HTTP akışını bozmaz **ve** event'ler outbox'ta korunur.
+
+3. **Kafka up → reconnect → drain → analytics yakalar:**
+   - `docker compose start kafka` (healthy olana dek bekle).
+   - OutboxProcessor reconnect olur → birikmiş Kafka satırlarını publish eder (ProcessedOnUtc dolar).
+   - AnalyticsService consumer tüketir → adım 2'de oluşturulan siparişlerin projection'ları belirir
+     (`SELECT COUNT(*) FROM OrderProjections` artar; kafka-ui'de consumer-group lag → 0).
 
 **Tahmini süre:** 10-14 saat
 
