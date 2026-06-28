@@ -3,8 +3,8 @@ using OrderHub.OrderService.Domain.Orders;
 namespace OrderHub.OrderService.UnitTests.TestData;
 
 /// <summary>
-/// Test verisi üretici (Object Mother): siparişi farklı yaşam döngüsü durumlarında kurar.
-/// Paid/Shipped'e ulaşmanın yolu Faz 1'de yok (Pay/Ship Faz 3/5); guard'lar Cancelled ile test edilir.
+/// Test verisi üretici (Object Mother): siparişi farklı yaşam döngüsü durumlarında kurar
+/// (Pending → Confirmed → Paid → Shipped, ve Cancelled dalı).
 /// </summary>
 internal static class OrderFactory
 {
@@ -22,6 +22,13 @@ internal static class OrderFactory
     {
         var order = ConfirmedOrder();
         order.MarkPaid();
+        return order;
+    }
+
+    public static Order ShippedOrder()
+    {
+        var order = PaidOrder();
+        order.Ship();
         return order;
     }
 

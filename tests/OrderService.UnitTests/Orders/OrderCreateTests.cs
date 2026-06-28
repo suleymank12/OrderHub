@@ -28,6 +28,11 @@ public sealed class OrderCreateTests
         created.OrderId.Should().Be(order.Id);
         created.CustomerId.Should().Be(customerId);
         created.Total.Should().Be(order.Total);
+
+        // Faz 5 additive: kalemler saga rezervasyonu için olayda taşınır (ProductId + Quantity).
+        var orderItem = order.Items.Should().ContainSingle().Which;
+        created.Items.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new { orderItem.ProductId, orderItem.Quantity });
     }
 
     [Fact]

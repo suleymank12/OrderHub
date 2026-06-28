@@ -72,4 +72,20 @@ internal static partial class ApplicationLog
     [LoggerMessage(EventId = 2011, Level = LogLevel.Debug,
         Message = "Payment-failure cancellation skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
     public static partial void OrderPaymentFailureSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
+
+    [LoggerMessage(EventId = 2012, Level = LogLevel.Information,
+        Message = "Order {OrderId} confirmed")]
+    public static partial void OrderConfirmedByCommand(ILogger logger, Guid orderId);
+
+    [LoggerMessage(EventId = 2013, Level = LogLevel.Debug,
+        Message = "Confirm skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
+    public static partial void OrderConfirmSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
+
+    [LoggerMessage(EventId = 2014, Level = LogLevel.Information,
+        Message = "Order {OrderId} shipped")]
+    public static partial void OrderShipped(ILogger logger, Guid orderId);
+
+    [LoggerMessage(EventId = 2015, Level = LogLevel.Debug,
+        Message = "Ship skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
+    public static partial void OrderShipSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
 }

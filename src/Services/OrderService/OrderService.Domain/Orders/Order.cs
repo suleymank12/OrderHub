@@ -41,6 +41,9 @@ public sealed class Order : AggregateRoot<Guid>
     /// <summary>Ödenme zamanı (UTC); ödenmediyse null.</summary>
     public DateTime? PaidAtUtc { get; private set; }
 
+    /// <summary>Kargolanma zamanı (UTC); kargolanmadıysa null.</summary>
+    public DateTime? ShippedAtUtc { get; private set; }
+
     /// <summary>İptal zamanı (UTC); iptal edilmediyse null.</summary>
     public DateTime? CancelledAtUtc { get; private set; }
 
@@ -80,7 +83,11 @@ public sealed class Order : AggregateRoot<Guid>
         };
 
         order._items.AddRange(itemList);
-        order.RaiseDomainEvent(new OrderCreated(order.Id, customerId, order.Total));
+        order.RaiseDomainEvent(new OrderCreated(
+            order.Id,
+            customerId,
+            order.Total,
+            itemList.Select(item => new OrderCreatedItem(item.ProductId, item.Quantity)).ToList()));
         return order;
     }
 
@@ -126,6 +133,29 @@ public sealed class Order : AggregateRoot<Guid>
         Status = OrderStatus.Paid;
         PaidAtUtc = DateTime.UtcNow;
         RaiseDomainEvent(new OrderPaid(Id));
+    }
+
+    /// <summary>
+    /// Siparişi kargolanmış işaretler (Paid → Shipped) ve <see cref="OrderShipped"/> yükseltir. <b>Idempotent</b>:
+    /// zaten Shipped ise no-op (throw etmez — at-least-once saga-command teslimatı + status guard precedent'i,
+    /// <see cref="MarkPaid"/> ile aynı; no-op'ta yeni event yok). Paid dışındaki durumlardan (örn. Confirmed/
+    /// Cancelled) → <see cref="InvalidOrderStatusTransitionException"/>.
+    /// </summary>
+    public void Ship()
+    {
+        if (Status == OrderStatus.Shipped)
+        {
+            return; // Idempotent no-op: aynı ShipOrder ikinci kez gelirse güvenli.
+        }
+
+        if (Status != OrderStatus.Paid)
+        {
+            throw new InvalidOrderStatusTransitionException(Status, OrderStatus.Shipped);
+        }
+
+        Status = OrderStatus.Shipped;
+        ShippedAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new OrderShipped(Id));
     }
 
     /// <summary>
