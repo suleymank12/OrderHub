@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderHub.Contracts.Orders;
-using OrderHub.Contracts.Payments;
 using OrderHub.EventBus.Kafka;
 using OrderHub.Inbox;
 using OrderHub.Inbox.Consuming;
@@ -71,19 +70,18 @@ public static class DependencyInjection
         services.AddScoped<IInboxDbContext>(serviceProvider => serviceProvider.GetRequiredService<OrderDbContext>());
         services.AddInbox();
 
-        // Transport (RabbitMQ, ADR-0004) + payment-sonucu consumer'ları + inbox dedup filter + outbox processor.
-        // Consumer'lar PaymentSucceeded/Failed'ı tüketir; inbox filter (consume-pipe) consumer'lardan önce
-        // duplicate'leri keser (ADR-0005). RabbitMQ ayarları config'ten (secret env'den, K3).
+        // Transport (RabbitMQ, ADR-0004) + saga komut consumer'ları + inbox dedup filter + outbox processor.
+        // Faz 5 5d-5b cutover: PaymentSucceeded/Failed'ı artık SAGA tüketir (OrderProcessingService) → OrderService
+        // consumer'ları KALDIRILDI (çift işleme yok). Saga, stok/ödeme orkestrasyonu sonucu OrderService'e ConfirmOrder/
+        // MarkOrderPaid/ShipOrder komutları gönderir; bu consumer'lar onları handler'lara köprüler. Inbox filter
+        // (consume-pipe) duplicate'leri consumer'dan önce keser (ADR-0005). RabbitMQ ayarları config'ten (K3).
         var rabbitMqOptions = configuration.GetSection(RabbitMqSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
         services.AddRabbitMqEventBus(
             rabbitMqOptions,
             busConfigurator =>
             {
-                busConfigurator.AddConsumer<PaymentSucceededIntegrationEventConsumer>();
-                busConfigurator.AddConsumer<PaymentFailedIntegrationEventConsumer>();
-                // Faz 5 5d-5a (saga → OrderService komut consumer'ları). DORMANT: saga onlara OrderPlaced akmadan
-                // (5d-5b map'i) command göndermez → mevcut akış değişmez. ConfirmOrder/Ship idempotent ack;
-                // MarkOrderPaid Pending'de throw → retry (Karar D).
+                // Saga → OrderService komut consumer'ları (AKTİF — OrderCreated→OrderPlaced map'i saga'yı tetikler).
+                // ConfirmOrder/Ship idempotent ack; MarkOrderPaid Pending'de throw → retry (Karar D).
                 busConfigurator.AddConsumer<ConfirmOrderConsumer>();
                 busConfigurator.AddConsumer<MarkOrderPaidConsumer>();
                 busConfigurator.AddConsumer<ShipOrderConsumer>();
@@ -125,20 +123,13 @@ public static class DependencyInjection
     }
 
     // Domain olay → integration olay outbox çevirileri (saf factory'ler; Id = EventId, ADR-0002 Karar 4 invariant
-    // registry tarafından runtime doğrulanır). OrderConfirmed 1:N: ProcessPayment (RabbitMQ, Ordinal 0) +
-    // OrderConfirmed Kafka (Ordinal 1). OrderCreated/Paid/Cancelled yeni 1:1 Kafka stream'leri (ADR-0006).
+    // registry tarafından runtime doğrulanır). Kayıt sırası = Ordinal (0,1,…). Faz 5 5d-5b cutover:
+    // - OrderCreated 1:N: OrderCreatedIntegrationEvent (Kafka/Analytics, Ordinal 0) + OrderPlacedIntegrationEvent
+    //   (RabbitMQ, saga trigger, Ordinal 1). Saga'yı bu tetikler.
+    // - OrderConfirmed artık 1:1: yalnız OrderConfirmedIntegrationEvent (Kafka/Analytics). ProcessPayment map'i
+    //   KALDIRILDI — ödemeyi artık SAGA publish eder (çift ProcessPayment yok).
     private static void ConfigureOutboxMaps(OutboxEventRegistryBuilder registry)
     {
-        registry.Map<OrderConfirmed>(domainEvent => new ProcessPaymentIntegrationEvent
-        {
-            Id = domainEvent.EventId,
-            OccurredOnUtc = domainEvent.OccurredOnUtc,
-            OrderId = domainEvent.OrderId,
-            CustomerId = domainEvent.CustomerId,
-            Amount = domainEvent.Total.Amount,
-            Currency = domainEvent.Total.Currency.ToString(),
-        });
-
         registry.Map<OrderConfirmed>(domainEvent => new OrderConfirmedIntegrationEvent
         {
             Id = domainEvent.EventId,
@@ -157,6 +148,21 @@ public static class DependencyInjection
             CustomerId = domainEvent.CustomerId,
             Amount = domainEvent.Total.Amount,
             Currency = domainEvent.Total.Currency.ToString(),
+        });
+
+        // Ordinal 1: saga trigger (RabbitMQ). Kalemler OrderCreatedItem → OrderPlacedItem; CustomerId saga'nın
+        // ProcessPayment'ı için, Amount/Currency Total'dan (primitive — Money sızdırılmaz).
+        registry.Map<OrderCreated>(domainEvent => new OrderPlacedIntegrationEvent
+        {
+            Id = domainEvent.EventId,
+            OccurredOnUtc = domainEvent.OccurredOnUtc,
+            OrderId = domainEvent.OrderId,
+            CustomerId = domainEvent.CustomerId,
+            Amount = domainEvent.Total.Amount,
+            Currency = domainEvent.Total.Currency.ToString(),
+            Items = domainEvent.Items
+                .Select(item => new OrderPlacedItem(item.ProductId, item.Quantity))
+                .ToList(),
         });
 
         registry.Map<OrderPaid>(domainEvent => new OrderPaidIntegrationEvent

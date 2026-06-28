@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using OrderHub.Contracts.Orders;
-using OrderHub.Contracts.Payments;
 using OrderHub.OrderService.Application.Abstractions.Messaging;
 using OrderHub.OrderService.Domain.Orders.Events;
 using OrderHub.OrderService.Infrastructure;
@@ -16,14 +15,16 @@ using OrderHub.OrderService.IntegrationTests.TestData;
 namespace OrderHub.OrderService.IntegrationTests.Persistence;
 
 /// <summary>
-/// Faz 3 Adım 2 (write-only) çekirdek doğrulamaları — <b>gerçek production DI</b> (<see cref="DependencyInjection.AddInfrastructure"/>)
-/// üzerinden, yani gerçek OrderConfirmed→ProcessPayment map'i ve interceptor sırasıyla:
+/// Outbox write-only çekirdeği — <b>gerçek production DI</b> (<see cref="DependencyInjection.AddInfrastructure"/>)
+/// üzerinden, Faz 5 5d-5b cutover ile güncel:
 /// <list type="bullet">
-/// <item>Confirm() → tam 1 OutboxMessage (ProcessPaymentIntegrationEvent, Id == EventId, payload doğru).</item>
+/// <item>Confirm() → OrderConfirmed <b>1:1</b> outbox (OrderConfirmedIntegrationEvent, Kafka, Ordinal 0). ★ ProcessPayment
+///   map'i KALDIRILDI — ödemeyi artık SAGA publish eder.</item>
+/// <item>Create() → OrderCreated <b>1:N</b> outbox: OrderCreatedIntegrationEvent (Kafka, Ordinal 0) +
+///   OrderPlacedIntegrationEvent (RabbitMQ saga trigger, Ordinal 1, payload dolu).</item>
 /// <item>Outbox satırı domain order ile <b>aynı transaction</b>: rollback → ikisi de yok; commit → ikisi de var.</item>
-/// <item><b>Clear-invariant:</b> Create() (OrderCreated registry'de YOK) → outbox'a hiçbir satır yazılmaz,
-///   AMA in-process dispatch çalışır ve domain event'ler post-commit temizlenir → pre-commit outbox'ın
-///   domain event'i CLEAR ETMEDİĞİNİN ve Faz 2 zincirinin sağ olduğunun kanıtı (ADR-0002 Faz 3 Karar 2).</item>
+/// <item><b>Clear-invariant:</b> pre-commit outbox READ-ONLY (domain event'i CLEAR ETMEZ) → post-commit in-process
+///   dispatch çalışır + event'ler temizlenir → Faz 2 zinciri sağ (ADR-0002 Faz 3 Karar 2).</item>
 /// </list>
 /// İzolasyon: rollback testleri commit etmez; commit testi yazdığını siler (paralelleştirme kapalı, seri).
 /// </summary>
@@ -33,7 +34,7 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
     private static readonly JsonSerializerOptions PayloadOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public async Task SaveChanges_OrderConfirmed_FansOutToProcessPaymentAndOrderConfirmedKafkaEvent()
+    public async Task SaveChanges_OrderConfirmed_WritesOnlyKafkaOutbox_AndDispatchStillRuns()
     {
         var publisherMock = LoosePublisher();
 
@@ -51,27 +52,19 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
 
-        // OrderConfirmed → 1:N fan-out (ADR-0006): ProcessPayment (RabbitMQ, Ordinal 0) + OrderConfirmed Kafka
-        // (Ordinal 1); ikisi de Id == OrderConfirmed.EventId (composite PK (Id, Ordinal) ayırır).
+        // 5d-5b cutover: OrderConfirmed artık 1:1 → yalnız OrderConfirmedIntegrationEvent (Kafka, Ordinal 0).
+        // ProcessPayment map'i kaldırıldı (ödemeyi saga publish eder → çift ProcessPayment yok).
         var confirmedRows = await context.OutboxMessages
             .Where(message => message.Id == confirmedEventId)
             .OrderBy(message => message.Ordinal)
             .ToListAsync();
 
-        confirmedRows.Should().HaveCount(2);
-        confirmedRows[0].Ordinal.Should().Be(0);
-        confirmedRows[0].Type.Should().Be(typeof(ProcessPaymentIntegrationEvent).AssemblyQualifiedName);
-        confirmedRows[1].Ordinal.Should().Be(1);
-        confirmedRows[1].Type.Should().Be(typeof(OrderConfirmedIntegrationEvent).AssemblyQualifiedName);
-        confirmedRows.Should().OnlyContain(r =>
-            r.Id == confirmedEventId && r.ProcessedOnUtc == null && r.RetryCount == 0);
-
-        var payload = JsonSerializer.Deserialize<ProcessPaymentIntegrationEvent>(confirmedRows[0].Payload, PayloadOptions);
-        payload.Should().NotBeNull();
-        payload!.OrderId.Should().Be(order.Id);
-        payload.CustomerId.Should().Be(order.CustomerId);
-        payload.Amount.Should().Be(order.Total.Amount);
-        payload.Currency.Should().Be(order.Total.Currency.ToString());
+        var row = confirmedRows.Should().ContainSingle().Which;
+        row.Ordinal.Should().Be(0);
+        row.Type.Should().Be(typeof(OrderConfirmedIntegrationEvent).AssemblyQualifiedName);
+        row.Id.Should().Be(confirmedEventId);
+        row.ProcessedOnUtc.Should().BeNull();
+        row.RetryCount.Should().Be(0);
 
         // Outbox (pre-commit) OKUDU ama CLEAR ETMEDİ → dispatcher (post-commit) OrderConfirmed'ı publish edebildi.
         publisherMock.Verify(
@@ -102,9 +95,9 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
             context.Orders.Add(order);
             await context.SaveChangesAsync();
 
-            // Aynı transaction içinde her ikisi de görünür (atomik yazıldı). OrderConfirmed → 1:N (2 outbox satırı).
+            // Aynı transaction içinde her ikisi de görünür (atomik yazıldı). OrderConfirmed → 1:1 (1 outbox satırı, Kafka).
             (await context.Orders.CountAsync(o => o.Id == orderId)).Should().Be(1);
-            (await context.OutboxMessages.CountAsync(m => m.Id == eventId)).Should().Be(2);
+            (await context.OutboxMessages.CountAsync(m => m.Id == eventId)).Should().Be(1);
 
             // transaction commit EDİLMEZ → dispose rollback eder.
         }
@@ -152,11 +145,11 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
     }
 
     [Fact]
-    public async Task SaveChanges_OrderCreated_WritesKafkaOutbox_AndInProcessDispatchStillRuns()
+    public async Task SaveChanges_OrderCreated_FansOutToKafkaAndOrderPlaced_AndInProcessDispatchStillRuns()
     {
-        // ★ Clear-invariant (ADR-0002 Karar 2) Faz 4'te: OrderCreated artık HEM outbox'a (Kafka, ADR-0006) HEM
-        // in-process'e (Hangfire/MediatR) gider. Pre-commit outbox READ-ONLY (clear etmez); post-commit dispatcher
-        // hâlâ publish+clear eder → Faz 2 OrderCreated→Hangfire zinciri BOZULMAZ.
+        // ★ 5d-5b cutover: OrderCreated 1:N → OrderCreatedIntegrationEvent (Kafka/Analytics, Ordinal 0) +
+        // OrderPlacedIntegrationEvent (RabbitMQ saga trigger, Ordinal 1). Pre-commit outbox READ-ONLY → post-commit
+        // dispatcher hâlâ publish+clear eder (Faz 2 OrderCreated→Hangfire zinciri BOZULMAZ).
         var publisherMock = LoosePublisher();
 
         await using var provider = BuildProvider(publisherMock.Object);
@@ -171,13 +164,29 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
 
-        // 1) Outbox: OrderCreated → tam 1 satır (OrderCreatedIntegrationEvent, Kafka), Id == EventId.
-        var rows = await context.OutboxMessages.Where(m => m.Id == createdEventId).ToListAsync();
-        var row = rows.Should().ContainSingle().Which;
-        row.Type.Should().Be(typeof(OrderCreatedIntegrationEvent).AssemblyQualifiedName);
-        row.Ordinal.Should().Be(0);
+        // 1) Outbox: OrderCreated → 2 satır (Kafka Ordinal 0 + OrderPlaced Ordinal 1); ikisi de Id == EventId.
+        var rows = await context.OutboxMessages
+            .Where(m => m.Id == createdEventId)
+            .OrderBy(m => m.Ordinal)
+            .ToListAsync();
 
-        // 2) In-process dispatch ÇALIŞTI: DispatchDomainEventsInterceptor OrderCreated'ı publish etti (Faz 2 zinciri sağ).
+        rows.Should().HaveCount(2);
+        rows[0].Ordinal.Should().Be(0);
+        rows[0].Type.Should().Be(typeof(OrderCreatedIntegrationEvent).AssemblyQualifiedName);
+        rows[1].Ordinal.Should().Be(1);
+        rows[1].Type.Should().Be(typeof(OrderPlacedIntegrationEvent).AssemblyQualifiedName);
+
+        // 2) OrderPlaced payload (saga trigger): CustomerId/Items/Amount/Currency dolu.
+        var placed = JsonSerializer.Deserialize<OrderPlacedIntegrationEvent>(rows[1].Payload, PayloadOptions);
+        placed.Should().NotBeNull();
+        placed!.OrderId.Should().Be(order.Id);
+        placed.CustomerId.Should().Be(order.CustomerId);
+        placed.Amount.Should().Be(order.Total.Amount);
+        placed.Currency.Should().Be(order.Total.Currency.ToString());
+        placed.Items.Should().NotBeEmpty("saga ReserveStock için kalem listesi");
+        placed.Items.Should().OnlyContain(item => item.ProductId != Guid.Empty && item.Quantity > 0);
+
+        // 3) In-process dispatch ÇALIŞTI: DispatchDomainEventsInterceptor OrderCreated'ı publish etti (Faz 2 zinciri sağ).
         publisherMock.Verify(
             p => p.Publish(
                 It.Is<INotification>(n => (n as DomainEventNotification<OrderCreated>) != null),
@@ -185,7 +194,7 @@ public sealed class OutboxWriteTests(SqlServerContainerFixture fixture)
             Times.Once,
             "Faz 2 in-process dispatch (OrderCreated → Hangfire) kırılmamalı");
 
-        // 3) Domain event'ler temizlendi → pre-commit outbox DEĞİL, post-commit dispatcher clear etti.
+        // 4) Domain event'ler temizlendi → pre-commit outbox DEĞİL, post-commit dispatcher clear etti.
         order.DomainEvents.Should().BeEmpty();
     }
 
