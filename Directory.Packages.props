@@ -62,19 +62,21 @@
   </ItemGroup>
 
   <ItemGroup Label="Messaging (MassTransit / RabbitMQ)">
-    <!-- 8.5.9: 8.x hattının son stable'ı = son ÜCRETSIZ (Apache-2.0) sürüm; v9+ ticari lisans (ADR-0004).
-         Sabit pin → v9'a sessiz sıçrama engellenir (MediatR/FluentValidation pin disiplini ile aynı).
-         MassTransit.RabbitMQ transitive olarak RabbitMQ.Client 7.2.1 getirir; default serializer
-         System.Text.Json'dır (Newtonsoft YOK → §3 temiz, ADR-0004 Karar 3). -->
-    <PackageVersion Include="MassTransit" Version="8.5.9" />
-    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.9" />
+    <!-- 8.4.0: 8.x hattı = ÜCRETSİZ (Apache-2.0); v9+ ticari lisans (ADR-0004). Sabit pin → v9'a sessiz sıçrama
+         engellenir (MediatR/FluentValidation pin disiplini ile aynı). MassTransit.RabbitMQ transitive olarak
+         RabbitMQ.Client getirir; default serializer System.Text.Json'dır (Newtonsoft YOK → §3, ADR-0004 Karar 3).
+         ★ Faz 5 5d-4a: 8.5.9 → 8.4.0'a DÜŞÜLDÜ — MassTransit.EntityFrameworkCore 8.5.x'in net8.0 grubu
+         EF Core 9.0.1'e bağlı (EF Core 8 LTS kilidini deler, §3). 8.4.0 net8.0 grubu EF Core 8.0.0 kullanır →
+         EF Core 8.0.11 kilidi korunur. Saga API'leri (AddSagaStateMachine/EntityFrameworkRepository/
+         ConcurrencyMode/UseInMemoryOutbox) 8.4.0'da değişmedi (minor downgrade, kod aynı). -->
+    <PackageVersion Include="MassTransit" Version="8.4.0" />
+    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.4.0" />
     <!-- Faz 5 (ADR-0007 Karar 3): MassTransit saga state-machine'i EF Core saga repository ile persist eder
-         (OrderHub_Sagas DB, database-per-service). MassTransit alt-paketleri lockstep → core ile AYNI sürüm (8.5.9)
-         pinli (diamond sürpriz yok). Bu adımda (5a) yalnız CPM pin'i; saga kodu 5d'de — pin kullanılmasa da
-         CPM merkezi tanımı warning vermez. MassTransit.Hangfire (saga-native timeout) BİLİNÇLİ eklenmedi (YAGNI):
+         (OrderHub_Sagas DB, database-per-service). MassTransit alt-paketleri lockstep → core ile AYNI sürüm (8.4.0)
+         pinli (diamond sürpriz yok). MassTransit.Hangfire (saga-native timeout) BİLİNÇLİ eklenmedi (YAGNI):
          reservation expiry InventoryService Hangfire-job → StockReservationExpired event ile çözülür (ADR-0007
-         Karar 2); saga-native scheduler gerçekten gerekirse 5d'de eklenir. -->
-    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.5.9" />
+         Karar 2); saga-native scheduler gerçekten gerekirse eklenir. -->
+    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.4.0" />
   </ItemGroup>
 
   <ItemGroup Label="Event Streaming (Kafka)">

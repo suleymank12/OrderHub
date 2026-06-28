@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.OrderProcessingService.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.OrderProcessingService.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- GuidSetJsonConverter internal → InternalsVisibleTo ile erişilir. -->
+    <ProjectReference Include="..\..\src\Services\OrderProcessingService\OrderProcessingService.Infrastructure\OrderHub.OrderProcessingService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+</Project>

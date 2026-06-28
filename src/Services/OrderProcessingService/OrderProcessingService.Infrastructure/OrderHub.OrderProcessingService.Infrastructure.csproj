@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.OrderProcessingService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.OrderProcessingService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- DbContext/saga/configuration internal (§9); yalnızca test assembly'lerine açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.OrderProcessingService.IntegrationTests" />
+    <InternalsVisibleTo Include="OrderHub.OrderProcessingService.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Transport (RabbitMQ): AddRabbitMqEventBus + RabbitMqOptions. MassTransit core/RabbitMQ transitive gelir. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- Saga'nın tükettiği/gönderdiği event + command sözleşmeleri (OrderPlaced/StockReserved/ProcessPayment/...). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Saga state machine + repo API'sini doğrudan kullanır (AddSagaStateMachine/ConcurrencyMode/UseInMemoryOutbox)
+         → transitive'e güvenme, explicit. -->
+    <PackageReference Include="MassTransit" />
+    <!-- EF Core saga repository (EntityFrameworkRepository extension). -->
+    <PackageReference Include="MassTransit.EntityFrameworkCore" />
+    <!-- RabbitMqOptions'ı config'ten bağlamak için ConfigurationBinder.Get<T>(). -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: sadece migration üretimi için; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

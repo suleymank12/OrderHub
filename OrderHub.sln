@@ -85,6 +85,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.InventoryService.I
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.InventoryService.Application", "src\Services\InventoryService\InventoryService.Application\OrderHub.InventoryService.Application.csproj", "{FE69A65F-3E77-4325-8500-273D09482E37}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OrderProcessingService", "OrderProcessingService", "{FC6B34AE-9028-4CD5-9187-155F172A4396}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.OrderProcessingService.Infrastructure", "src\Services\OrderProcessingService\OrderProcessingService.Infrastructure\OrderHub.OrderProcessingService.Infrastructure.csproj", "{9F0A31DC-98B0-4C6F-9C4F-AE989A326083}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.OrderProcessingService.Api", "src\Services\OrderProcessingService\OrderProcessingService.Api\OrderHub.OrderProcessingService.Api.csproj", "{A904357B-ED39-4C57-8C06-FC170D8F3131}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.OrderProcessingService.UnitTests", "tests\OrderProcessingService.UnitTests\OrderHub.OrderProcessingService.UnitTests.csproj", "{F60E2A0B-A5E3-4937-9A8A-C39F5F39B27E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.OrderProcessingService.IntegrationTests", "tests\OrderProcessingService.IntegrationTests\OrderHub.OrderProcessingService.IntegrationTests.csproj", "{B4D63C51-B5A3-4DEA-993D-6ABE9C538325}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -222,6 +232,22 @@ Global
 		{FE69A65F-3E77-4325-8500-273D09482E37}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE69A65F-3E77-4325-8500-273D09482E37}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE69A65F-3E77-4325-8500-273D09482E37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F0A31DC-98B0-4C6F-9C4F-AE989A326083}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F0A31DC-98B0-4C6F-9C4F-AE989A326083}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F0A31DC-98B0-4C6F-9C4F-AE989A326083}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F0A31DC-98B0-4C6F-9C4F-AE989A326083}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A904357B-ED39-4C57-8C06-FC170D8F3131}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A904357B-ED39-4C57-8C06-FC170D8F3131}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A904357B-ED39-4C57-8C06-FC170D8F3131}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A904357B-ED39-4C57-8C06-FC170D8F3131}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F60E2A0B-A5E3-4937-9A8A-C39F5F39B27E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F60E2A0B-A5E3-4937-9A8A-C39F5F39B27E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F60E2A0B-A5E3-4937-9A8A-C39F5F39B27E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F60E2A0B-A5E3-4937-9A8A-C39F5F39B27E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4D63C51-B5A3-4DEA-993D-6ABE9C538325}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4D63C51-B5A3-4DEA-993D-6ABE9C538325}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4D63C51-B5A3-4DEA-993D-6ABE9C538325}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4D63C51-B5A3-4DEA-993D-6ABE9C538325}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A326A5EC-9671-4D6D-8B8B-503E6D146E7A} = {81B9C654-3B5F-4587-B481-8B3379AF0617}
@@ -262,5 +288,10 @@ Global
 		{19EC581E-686C-4DCE-B78E-B160484B44DD} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 		{AB11F250-17BA-4EEF-B0BD-AE99CEFCB9FE} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 		{FE69A65F-3E77-4325-8500-273D09482E37} = {7B989988-89CC-43A6-9865-454F73ACE418}
+		{FC6B34AE-9028-4CD5-9187-155F172A4396} = {3051D7F1-28A4-4C08-A690-3A31023E6C64}
+		{9F0A31DC-98B0-4C6F-9C4F-AE989A326083} = {FC6B34AE-9028-4CD5-9187-155F172A4396}
+		{A904357B-ED39-4C57-8C06-FC170D8F3131} = {FC6B34AE-9028-4CD5-9187-155F172A4396}
+		{F60E2A0B-A5E3-4937-9A8A-C39F5F39B27E} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
+		{B4D63C51-B5A3-4DEA-993D-6ABE9C538325} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 	EndGlobalSection
 EndGlobal

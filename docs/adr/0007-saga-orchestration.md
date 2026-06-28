@@ -75,8 +75,12 @@ Saga reservation timeout'u (15 dk, §5.1) için **yeni broker altyapısı eklenm
 ### Karar 3 — Saga persistence = **MassTransit.EntityFrameworkCore** + optimistic concurrency
 
 - **EF Core saga repository:** Saga state, **`MassTransit.EntityFrameworkCore`** ile kendi DB'sine
-  (`OrderHub_Sagas`, **database-per-service** — ADR Faz 3 deseni) persist edilir. CPM'e `8.5.9` pinlendi
+  (`OrderHub_Sagas`, **database-per-service** — ADR Faz 3 deseni) persist edilir. CPM'e `8.4.0` pinlendi
   (MassTransit alt-paketleri lockstep → core ile aynı sürüm).
+  > **Not (5d-4a):** İlk pin `8.5.9` idi; ancak `MassTransit.EntityFrameworkCore` 8.5.x'in `net8.0` grubu
+  > **EF Core 9.0.1**'e bağlıdır ve §3'teki **EF Core 8.x LTS** kilidini deler. `8.4.0` net8.0 grubu EF Core
+  > **8.0.0** kullandığından (mevcut `8.0.11` ile uyumlu) tüm hat `8.4.0`'a düşürüldü. Saga API'leri
+  > (`AddSagaStateMachine` / `EntityFrameworkRepository` / `ConcurrencyMode` / `UseInMemoryOutbox`) değişmedi.
 - **Optimistic concurrency + RowVersion:** Saga instance'ına eşzamanlı mesajlar vurabilir (ör. `StockReserved`
   ile bir timeout neredeyse aynı anda). MassTransit EF repository iki mod sunar: *pessimistic* (row lock) ve
   *optimistic* (SQL Server `[Timestamp] byte[] RowVersion`). **Optimistic + RowVersion + retry** seçilir —

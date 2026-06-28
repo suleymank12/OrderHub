@@ -9,6 +9,8 @@ namespace OrderHub.Contracts.Orders;
 /// <see cref="Currency"/> ile <c>ProcessPayment</c> üretir. Saga <b>tek</b> mantıksal tüketicidir → command-style,
 /// RabbitMQ (<see cref="IRabbitMqEvent"/>, ADR-0007 Karar 4).
 /// <para>
+/// <see cref="CustomerId"/> saga tarafından state'te saklanır ve <c>ProcessPaymentIntegrationEvent</c>'e taşınır
+/// (o sözleşme CustomerId'yi <c>required</c> ister); 5d-5'te OrderService outbox map'i bunu Order'dan doldurur.
 /// <see cref="Id"/> kaynak domain olayının EventId'sini taşır (uçtan uca dedup, ADR-0002 Karar 4). Kalemler
 /// <see cref="OrderPlacedItem"/> listesi olarak taşınır — saga'nın N adet <c>ReserveStock</c> kurabilmesi için
 /// ürün + miktar bilgisi gerekir. Tutar bilinçli olarak primitive (<c>decimal</c> + ISO 4217 <c>string</c>)
@@ -25,6 +27,9 @@ public sealed record OrderPlacedIntegrationEvent : IRabbitMqEvent
 
     /// <summary>Saga'yı tetikleyen sipariş kimliği (saga correlation'ı).</summary>
     public required Guid OrderId { get; init; }
+
+    /// <summary>Sipariş sahibinin müşteri kimliği — saga <c>ProcessPayment</c> için saklar/taşır.</summary>
+    public required Guid CustomerId { get; init; }
 
     /// <summary>Sipariş kalemleri — saga her biri için bir <c>ReserveStock</c> komutu kurar.</summary>
     public required IReadOnlyList<OrderPlacedItem> Items { get; init; }
