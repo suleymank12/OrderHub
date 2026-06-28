@@ -43,8 +43,8 @@ public static class DependencyInjection
 
         // Outbox WRITE yolu: domain olay → integration event çevirileri. Id = EventId (uçtan uca dedup,
         // ADR-0002 Karar 4 — registry invariant'ı bunu runtime'da doğrular).
-        // StockReservationConfirmed KASITLI haritaLANMAZ: yalnızca in-process sinyaldir, saga
-        // ConfirmStockReservation'dan sonra zaten Completed'a geçer; integration event yoktur.
+        // 5d-3 (C2 kararı): StockReservationConfirmed ARTIK map'lenir — saga per-ürün confirm sayacı için bu
+        // sonucu görmeli (5c'de "yalnız in-process sinyal" idi; saga choreography yerine orkestrasyona geçti).
         services.AddOutboxWriter(ConfigureOutboxMaps);
 
         services.AddDbContext<InventoryDbContext>((serviceProvider, options) =>
@@ -121,6 +121,15 @@ public static class DependencyInjection
             OrderId = domainEvent.OrderId,
             ProductId = domainEvent.ProductId,
             Quantity = domainEvent.Quantity,
+        });
+
+        // 5d-3 (C2): confirm sonucu → saga (per-ürün confirm sayacı). Id = EventId (uçtan uca dedup).
+        registry.Map<StockReservationConfirmed>(domainEvent => new StockReservationConfirmedIntegrationEvent
+        {
+            Id = domainEvent.EventId,
+            OccurredOnUtc = domainEvent.OccurredOnUtc,
+            OrderId = domainEvent.OrderId,
+            ProductId = domainEvent.ProductId,
         });
     }
 }

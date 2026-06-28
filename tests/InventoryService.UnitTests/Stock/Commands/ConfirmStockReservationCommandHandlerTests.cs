@@ -37,7 +37,9 @@ public sealed class ConfirmStockReservationCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         stockItem.Reservations.Should().ContainSingle(r =>
             r.OrderId == orderId && r.Status == ReservationStatus.Confirmed);
-        stockItem.DomainEvents.Should().ContainSingle(e => e is StockReservationConfirmed);
+        // 5d-3: olay ProductId taşır (outbox map → integration event → saga per-ürün confirm sayacı).
+        stockItem.DomainEvents.OfType<StockReservationConfirmed>().Should()
+            .ContainSingle(e => e.ProductId == productId && e.OrderId == orderId);
     }
 
     [Fact]

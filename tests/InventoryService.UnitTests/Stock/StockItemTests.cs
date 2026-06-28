@@ -77,7 +77,9 @@ public sealed class StockItemTests
 
         item.Reservations.Single().Status.Should().Be(ReservationStatus.Confirmed);
         item.AvailableQuantity.Should().Be(8, "confirm available'ı değiştirmez (reserve'de düştü)");
-        item.DomainEvents.OfType<StockReservationConfirmed>().Should().ContainSingle();
+        // 5d-3: olay OrderId + ProductId (aggregate'ten) taşır — saga per-ürün confirm sayacı için.
+        item.DomainEvents.OfType<StockReservationConfirmed>().Should()
+            .ContainSingle(e => e.OrderId == orderId && e.ProductId == item.ProductId);
     }
 
     [Fact]

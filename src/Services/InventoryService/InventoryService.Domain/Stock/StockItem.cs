@@ -110,7 +110,7 @@ public sealed class StockItem : AggregateRoot<Guid>
         var reservation = RequireReservation(orderId);
         if (reservation.Confirm()) // yalnız GERÇEK geçişte event (zaten Confirmed → no-op, duplicate event yok).
         {
-            RaiseDomainEvent(new StockReservationConfirmed(Id, orderId));
+            RaiseDomainEvent(new StockReservationConfirmed(Id, ProductId, orderId));
         }
     }
 

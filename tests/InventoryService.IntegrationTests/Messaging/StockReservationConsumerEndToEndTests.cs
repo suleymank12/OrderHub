@@ -142,6 +142,93 @@ public sealed class StockReservationConsumerEndToEndTests(
         }
     }
 
+    [Fact]
+    public async Task ConfirmStockReservationConsumer_PendingReservation_ConfirmsAndWritesConfirmedOutboxRow()
+    {
+        var orderId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        await using var provider = BuildProvider();
+        await SeedStockItemAsync(provider, productId, initialQuantity: 10);
+
+        var busControl = provider.GetRequiredService<IBusControl>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        await busControl.StartAsync(cts.Token);
+        try
+        {
+            await busControl.Publish(ReserveOf(orderId, productId, Guid.NewGuid(), quantity: 3), cts.Token);
+            await WaitForPendingReservationAsync(provider, productId, orderId, cts.Token);
+
+            await busControl.Publish(ConfirmOf(orderId, productId, Guid.NewGuid()), cts.Token);
+            await WaitForOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", cts.Token);
+
+            var stockItem = await LoadStockItemAsync(provider, productId, cts.Token);
+            stockItem.Reservations.Should().ContainSingle(r =>
+                r.OrderId == orderId && r.Status == ReservationStatus.Confirmed);
+
+            // 5d-3 (C2): confirm domain event'i artık outbox'a map'lenir → saga'ya gider.
+            var hasRow = await HasOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", cts.Token);
+            hasRow.Should().BeTrue("confirm → StockReservationConfirmed domain event → outbox map → saga'ya integration event");
+        }
+        finally
+        {
+            await busControl.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task ConfirmStockReservationConsumer_ConfirmedTwiceWithDistinctMessages_SingleConfirmedOutboxRow()
+    {
+        var orderId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        await using var provider = BuildProvider();
+        await SeedStockItemAsync(provider, productId, initialQuantity: 10);
+
+        var busControl = provider.GetRequiredService<IBusControl>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        await busControl.StartAsync(cts.Token);
+        try
+        {
+            await busControl.Publish(ReserveOf(orderId, productId, Guid.NewGuid(), quantity: 3), cts.Token);
+            await WaitForPendingReservationAsync(provider, productId, orderId, cts.Token);
+
+            // ★ İki FARKLI Id'li confirm mesajı (inbox dedup'ı atlar → consumer İKİ kez koşar) AYNI order için.
+            // İlki Pending→Confirmed (event + outbox satırı); ikincisi aggregate no-op (Confirm()=false → event YOK).
+            // Aggregate-level idempotency (5c rafine) kanıtı: saga per-ürün confirm sayacı için ÇİFT integration event olmamalı.
+            await busControl.Publish(ConfirmOf(orderId, productId, Guid.NewGuid()), cts.Token);
+            await WaitForOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", cts.Token);
+
+            await busControl.Publish(ConfirmOf(orderId, productId, Guid.NewGuid()), cts.Token);
+            await Task.Delay(TimeSpan.FromSeconds(4), cts.Token);
+
+            var rowCount = await CountOutboxRowsByOrderIdAsync(
+                provider, "StockReservationConfirmedIntegrationEvent", orderId, cts.Token);
+            rowCount.Should().Be(1, "ikinci confirm aggregate no-op → duplicate domain event yok → duplicate outbox satırı yok");
+        }
+        finally
+        {
+            await busControl.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static ReserveStockIntegrationEvent ReserveOf(Guid orderId, Guid productId, Guid eventId, int quantity) =>
+        new()
+        {
+            Id = eventId,
+            OccurredOnUtc = DateTime.UtcNow,
+            OrderId = orderId,
+            ProductId = productId,
+            Quantity = quantity,
+        };
+
+    private static ConfirmStockReservationIntegrationEvent ConfirmOf(Guid orderId, Guid productId, Guid eventId) =>
+        new()
+        {
+            Id = eventId,
+            OccurredOnUtc = DateTime.UtcNow,
+            OrderId = orderId,
+            ProductId = productId,
+        };
+
     private ServiceProvider BuildProvider()
     {
         var config = new ConfigurationBuilder()
