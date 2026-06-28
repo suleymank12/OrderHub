@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
+    <!-- MassTransit InMemory test harness (AddMassTransitTestHarness/ITestHarness) — saga'yı broker'sız test eder. -->
+    <PackageReference Include="MassTransit" />
   </ItemGroup>
 
 </Project>
