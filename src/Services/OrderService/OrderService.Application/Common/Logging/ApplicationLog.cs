@@ -65,6 +65,10 @@ internal static partial class ApplicationLog
         Message = "Mark-paid skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
     public static partial void OrderMarkPaidSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
 
+    [LoggerMessage(EventId = 2012, Level = LogLevel.Information,
+        Message = "Mark-paid deferred for order {OrderId}; still Pending (ConfirmOrder not yet applied) → retryable (Faz 5 saga Karar D)")]
+    public static partial void OrderMarkPaidPendingRetry(ILogger logger, Guid orderId);
+
     [LoggerMessage(EventId = 2010, Level = LogLevel.Information,
         Message = "Order {OrderId} cancelled by payment failure")]
     public static partial void OrderCancelledByPaymentFailure(ILogger logger, Guid orderId);

@@ -53,6 +53,36 @@ public sealed class MarkOrderPaidCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PendingOrder_ReturnsRetryableNotYetConfirmedFailure()
+    {
+        // Saga Karar D: ConfirmOrder bu siparişe henüz ulaşmadı → retryable failure (Success(false) DEĞİL,
+        // yoksa inbox commit edilir + retry skip → MarkOrderPaid kaybolur). State değişmez.
+        var order = OrderFactory.PendingOrder();
+        _repository.Setup(r => r.GetByIdAsync(order.Id, It.IsAny<CancellationToken>())).ReturnsAsync(order);
+
+        var result = await _sut.Handle(new MarkOrderPaidCommand(order.Id), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(MarkOrderPaidCommand.NotYetConfirmedErrorCode);
+        order.Status.Should().Be(OrderStatus.Pending, "Pending'de no-op (retry bekleniyor)");
+        order.DomainEvents.OfType<OrderPaid>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_CancelledOrder_IsTerminalNoOpReturnsFalse()
+    {
+        // Terminal non-Confirmed (Cancelled) → idempotent/edge ack (Success(false)), retry YOK (compensation 5e).
+        var order = OrderFactory.CancelledOrder();
+        _repository.Setup(r => r.GetByIdAsync(order.Id, It.IsAny<CancellationToken>())).ReturnsAsync(order);
+
+        var result = await _sut.Handle(new MarkOrderPaidCommand(order.Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeFalse("terminal Cancelled → no-op ack");
+        order.Status.Should().Be(OrderStatus.Cancelled);
+    }
+
+    [Fact]
     public async Task Handle_OrderNotFound_ReturnsNotFoundFailure()
     {
         var orderId = Guid.NewGuid();

@@ -81,6 +81,12 @@ public static class DependencyInjection
             {
                 busConfigurator.AddConsumer<PaymentSucceededIntegrationEventConsumer>();
                 busConfigurator.AddConsumer<PaymentFailedIntegrationEventConsumer>();
+                // Faz 5 5d-5a (saga → OrderService komut consumer'ları). DORMANT: saga onlara OrderPlaced akmadan
+                // (5d-5b map'i) command göndermez → mevcut akış değişmez. ConfirmOrder/Ship idempotent ack;
+                // MarkOrderPaid Pending'de throw → retry (Karar D).
+                busConfigurator.AddConsumer<ConfirmOrderConsumer>();
+                busConfigurator.AddConsumer<MarkOrderPaidConsumer>();
+                busConfigurator.AddConsumer<ShipOrderConsumer>();
             },
             (rabbit, context) => rabbit.UseConsumeFilter(typeof(InboxConsumeFilter<>), context));
 
