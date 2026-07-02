@@ -8,11 +8,19 @@
   <ItemGroup>
     <!-- SagasDbContext + saga state internal → InternalsVisibleTo ile erişilir. -->
     <ProjectReference Include="..\..\src\Services\OrderProcessingService\OrderProcessingService.Infrastructure\OrderHub.OrderProcessingService.Infrastructure.csproj" />
+    <!-- Integration event contract tipleri (e2e saga akışı: OrderPlaced/StockReserved/… mesajları). -->
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Testcontainers.MsSql" />
+    <!-- 5d-7: gerçek RabbitMQ broker üzerinden saga uçtan uca (Test B). -->
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <!-- SagaBusHarness'ta ConfigurationBuilder + AddInMemoryCollection için (Api proj. yok → transitive gelmez). -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
   </ItemGroup>
 
 </Project>

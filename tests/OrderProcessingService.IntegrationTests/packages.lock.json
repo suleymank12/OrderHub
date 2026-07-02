@@ -17,6 +17,40 @@
           "System.Configuration.ConfigurationManager": "6.0.0"
         }
       },
+      "MassTransit": {
+        "type": "Direct",
+        "requested": "[8.4.0, )",
+        "resolved": "8.4.0",
+        "contentHash": "czHZK8Lg4obJmIUTqJj5f9K/dtv5eXj7FLni/jxxStHT3jfH34NIe1d1iUBK4igYrV5R7q8IqHvULokypvatOw==",
+        "dependencies": {
+          "MassTransit.Abstractions": "8.4.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0",
+          "Microsoft.Extensions.Hosting.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Options": "8.0.0"
+        }
+      },
+      "MassTransit.RabbitMQ": {
+        "type": "Direct",
+        "requested": "[8.4.0, )",
+        "resolved": "8.4.0",
+        "contentHash": "+dFq3z2iiEOe1zC9oTzaNK9wvQB4CZdeDR0OwkJytx87c+10gFHGWL6lj0eL5vBPDv72tUFaSDkuI084NjX26A==",
+        "dependencies": {
+          "MassTransit": "8.4.0",
+          "RabbitMQ.Client": "7.1.2"
+        }
+      },
+      "Microsoft.Extensions.Configuration": {
+        "type": "Direct",
+        "requested": "[8.0.0, )",
+        "resolved": "8.0.0",
+        "contentHash": "0J/9YNXTMWSZP2p2+nvl8p71zpSwokZXZuJW+VjdErkegAnFdO1XlqtA62SJtgVYHdKu3uPxJHcMR/r35HwFBA==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Primitives": "8.0.0"
+        }
+      },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
         "requested": "[17.12.0, )",
@@ -32,6 +66,15 @@
         "requested": "[4.0.0, )",
         "resolved": "4.0.0",
         "contentHash": "HausfOB3+UDDujygP2laXCUiNtrKrWJMeKnpTvP4F9JP0GswSsYlJS/mKEWw8ZXSpUd31K8enGZ7wW0HHeyg0w==",
+        "dependencies": {
+          "Testcontainers": "4.0.0"
+        }
+      },
+      "Testcontainers.RabbitMq": {
+        "type": "Direct",
+        "requested": "[4.0.0, )",
+        "resolved": "4.0.0",
+        "contentHash": "8x0kkzpLRTYLbQq3gQ4jwX62SfhSaeZQn89U33W3vkux536joayDrfLiF19hJYI4wEbytEMV2+Lal1TgQCY+Eg==",
         "dependencies": {
           "Testcontainers": "4.0.0"
         }
@@ -658,20 +701,6 @@
           "librdkafka.redist": "2.6.1"
         }
       },
-      "MassTransit": {
-        "type": "CentralTransitive",
-        "requested": "[8.4.0, )",
-        "resolved": "8.4.0",
-        "contentHash": "czHZK8Lg4obJmIUTqJj5f9K/dtv5eXj7FLni/jxxStHT3jfH34NIe1d1iUBK4igYrV5R7q8IqHvULokypvatOw==",
-        "dependencies": {
-          "MassTransit.Abstractions": "8.4.0",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0",
-          "Microsoft.Extensions.Hosting.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Options": "8.0.0"
-        }
-      },
       "MassTransit.EntityFrameworkCore": {
         "type": "CentralTransitive",
         "requested": "[8.4.0, )",
@@ -681,16 +710,6 @@
           "MassTransit": "8.4.0",
           "Microsoft.EntityFrameworkCore.Relational": "8.0.0",
           "Microsoft.Extensions.Caching.Memory": "8.0.1"
-        }
-      },
-      "MassTransit.RabbitMQ": {
-        "type": "CentralTransitive",
-        "requested": "[8.4.0, )",
-        "resolved": "8.4.0",
-        "contentHash": "+dFq3z2iiEOe1zC9oTzaNK9wvQB4CZdeDR0OwkJytx87c+10gFHGWL6lj0eL5vBPDv72tUFaSDkuI084NjX26A==",
-        "dependencies": {
-          "MassTransit": "8.4.0",
-          "RabbitMQ.Client": "7.1.2"
         }
       },
       "Microsoft.EntityFrameworkCore.Relational": {
