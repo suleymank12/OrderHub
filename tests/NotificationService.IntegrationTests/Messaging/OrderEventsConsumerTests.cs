@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OrderHub.NotificationService.Application.Abstractions.Notifications;
 using OrderHub.NotificationService.Domain.Orders;
 using OrderHub.NotificationService.Infrastructure;
+using OrderHub.NotificationService.Infrastructure.Notifications;
 using OrderHub.Contracts.Orders;
 using OrderHub.EventBus.Kafka;
 using OrderHub.NotificationService.IntegrationTests.Fixtures;
@@ -179,6 +181,58 @@ public sealed class OrderEventsConsumerTests(NotificationSqlServerContainerFixtu
         }
 
         await CleanupAsync(orderId);
+    }
+
+    [Fact]
+    public async Task Consumer_OrderConfirmed_SendsConfirmationEmail()
+    {
+        var orderId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var groupId = $"test-{Guid.NewGuid()}";
+
+        await ProduceAsync(new OrderCreatedIntegrationEvent
+        {
+            Id = Guid.NewGuid(), OccurredOnUtc = DateTime.UtcNow, OrderId = orderId,
+            CustomerId = customerId, Amount = 150m, Currency = "TRY",
+        });
+        await ProduceAsync(new OrderConfirmedIntegrationEvent
+        {
+            Id = Guid.NewGuid(), OccurredOnUtc = DateTime.UtcNow, OrderId = orderId,
+            CustomerId = customerId, Amount = 150m, Currency = "TRY",
+        });
+
+        await using var provider = BuildProvider(groupId);
+        var consumer = provider.GetServices<IHostedService>().Single();
+        await consumer.StartAsync(CancellationToken.None);
+        try
+        {
+            // Projection'ın Confirmed durumuna ulaşmasını bekle (e-posta SaveChanges'ten SONRA gönderilir).
+            await WaitForStatusAsync(orderId, OrderProjectionStatus.Confirmed, TimeSpan.FromSeconds(60));
+
+            // MockEmailSender singleton → consumer ile aynı instance. Post-commit e-posta gönderimini doğrula.
+            var mockEmailSender = provider.GetRequiredService<MockEmailSender>();
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            SentEmail? found = null;
+            while (DateTime.UtcNow < deadline)
+            {
+                found = mockEmailSender.Sent.FirstOrDefault(
+                    e => e.OrderId == orderId && e.Kind == NotificationEmailKind.OrderConfirmed);
+                if (found is not null)
+                {
+                    break;
+                }
+
+                await Task.Delay(200, CancellationToken.None);
+            }
+
+            found.Should().NotBeNull("OrderConfirmed events must trigger a confirmation email");
+            found!.CustomerId.Should().Be(customerId);
+            found.OrderId.Should().Be(orderId);
+        }
+        finally
+        {
+            await consumer.StopAsync(CancellationToken.None);
+        }
     }
 
     private async Task ProduceAsync(OrderStreamEvent integrationEvent)

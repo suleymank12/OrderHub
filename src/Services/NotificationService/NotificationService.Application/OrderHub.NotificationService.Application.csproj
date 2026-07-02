@@ -5,15 +5,24 @@
     <RootNamespace>OrderHub.NotificationService.Application</RootNamespace>
   </PropertyGroup>
 
+  <!-- Handler/job'lar internal (§9); Infrastructure Hangfire adapter + unit testler erişir. -->
+  <ItemGroup>
+    <!-- ICartAbandonmentScheduler.ScheduleReminder → BackgroundJobClient.Schedule<CartAbandonmentReminderJob> (DIP).
+         CartAbandonmentReminderJob internal; Infrastructure Hangfire adapter onu tip olarak schedule eder. -->
+    <InternalsVisibleTo Include="OrderHub.NotificationService.Infrastructure" />
+    <InternalsVisibleTo Include="OrderHub.NotificationService.UnitTests" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Application yalnız Domain'e bağlıdır (Clean Arch). Infrastructure'a ASLA. -->
     <ProjectReference Include="..\NotificationService.Domain\OrderHub.NotificationService.Domain.csproj" />
   </ItemGroup>
 
-  <!-- IServiceCollection (AddApplication extension method) için abstraction-only paket.
-       MediatR/FluentValidation/Mapster YOK (5f-1 iskeleti — 5f-2'de gerektiğinde eklenir). -->
+  <!-- IServiceCollection (AddApplication), ILogger (CartAbandonmentReminderJob), IOptions abstraction'ları. -->
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- CartAbandonmentReminderJob inline [LoggerMessage] kayıtları için. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
 </Project>

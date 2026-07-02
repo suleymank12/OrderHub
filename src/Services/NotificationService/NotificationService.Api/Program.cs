@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using OrderHub.NotificationService.Api.BackgroundJobs;
 using OrderHub.NotificationService.Api.Extensions;
 using OrderHub.NotificationService.Application;
 using OrderHub.NotificationService.Infrastructure;
@@ -24,6 +25,7 @@ try
     builder.Services
         .AddApplication()
         .AddInfrastructure(builder.Configuration)
+        .AddHangfireServices(builder.Configuration, builder.Environment)
         .AddApiServices(builder.Configuration);
 
     var app = builder.Build();

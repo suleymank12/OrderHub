@@ -44,4 +44,8 @@ internal static partial class OrderEventsLog
     [LoggerMessage(EventId = 7008, Level = LogLevel.Error,
         Message = "Kafka consume error ({ErrorCode}); consumer stays alive, retrying after backoff")]
     public static partial void ConsumeError(ILogger logger, string errorCode, Exception exception);
+
+    [LoggerMessage(EventId = 7009, Level = LogLevel.Debug,
+        Message = "ICartAbandonmentScheduler not registered; skipping reminder scheduling for order {OrderId} (projection-only mode)")]
+    public static partial void SchedulerAbsent(ILogger logger, Guid orderId);
 }

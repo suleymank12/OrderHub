@@ -5,9 +5,12 @@
     <RootNamespace>OrderHub.NotificationService.Infrastructure</RootNamespace>
   </PropertyGroup>
 
-  <!-- NotificationDbContext internal (§9); integration test assembly'sine açılır. -->
+  <!-- NotificationDbContext / MockEmailSender / Scheduler internal (§9); trusted assembly'lere açılır. -->
   <ItemGroup>
     <InternalsVisibleTo Include="OrderHub.NotificationService.IntegrationTests" />
+    <InternalsVisibleTo Include="OrderHub.NotificationService.UnitTests" />
+    <!-- Api DI: HangfireCartAbandonmentScheduler'ı AddScoped generic arg olarak kayıt eder (InternalsVisibleTo gerekli). -->
+    <InternalsVisibleTo Include="OrderHub.NotificationService.Api" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,6 +38,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <!-- IBackgroundJobClient: HangfireCartAbandonmentScheduler (Hangfire hosting API'de kalır). -->
+    <PackageReference Include="Hangfire.Core" />
+    <!-- IOptions<CartAbandonmentOptions>: HangfireCartAbandonmentScheduler delay binding. -->
+    <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
 
 </Project>

@@ -127,6 +127,17 @@
           "Docker.DotNet": "3.125.15"
         }
       },
+      "Hangfire.NetCore": {
+        "type": "Transitive",
+        "resolved": "1.8.23",
+        "contentHash": "SmvUJF/u5MCP666R5Y1V+GntqBc4RCWJqn5ztMMN67d53Cx5cuaWR0YNLMrabjylwLarFYJ7EdR9RnGEZzp/dg==",
+        "dependencies": {
+          "Hangfire.Core": "[1.8.23]",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "3.0.0",
+          "Microsoft.Extensions.Hosting.Abstractions": "3.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "3.0.0"
+        }
+      },
       "librdkafka.redist": {
         "type": "Transitive",
         "resolved": "2.6.1",
@@ -704,6 +715,8 @@
         "type": "Project",
         "dependencies": {
           "AspNetCore.HealthChecks.SqlServer": "[8.0.2, )",
+          "Hangfire.AspNetCore": "[1.8.23, )",
+          "Hangfire.SqlServer": "[1.8.23, )",
           "OrderHub.NotificationService.Application": "[1.0.0, )",
           "OrderHub.NotificationService.Infrastructure": "[1.0.0, )",
           "Serilog.AspNetCore": "[8.0.3, )",
@@ -715,6 +728,7 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[8.0.2, )",
           "OrderHub.NotificationService.Domain": "[1.0.0, )"
         }
       },
@@ -725,10 +739,12 @@
         "type": "Project",
         "dependencies": {
           "Confluent.Kafka": "[2.6.1, )",
+          "Hangfire.Core": "[1.8.23, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[8.0.11, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[8.0.1, )",
+          "Microsoft.Extensions.Options": "[8.0.2, )",
           "OrderHub.Contracts": "[1.0.0, )",
           "OrderHub.EventBus": "[1.0.0, )",
           "OrderHub.Inbox": "[1.0.0, )",
@@ -744,6 +760,33 @@
         "dependencies": {
           "Microsoft.Data.SqlClient": "5.2.0",
           "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
+        }
+      },
+      "Hangfire.AspNetCore": {
+        "type": "CentralTransitive",
+        "requested": "[1.8.23, )",
+        "resolved": "1.8.23",
+        "contentHash": "TXpOl7kX4xXq5bLEqqWCpt9zh3TaouDwtb3GDtzGHX5uSC2RaAqZzn2swevivx3Uki16slXIigiPtgr4TPKpsg==",
+        "dependencies": {
+          "Hangfire.NetCore": "[1.8.23]"
+        }
+      },
+      "Hangfire.Core": {
+        "type": "CentralTransitive",
+        "requested": "[1.8.23, )",
+        "resolved": "1.8.23",
+        "contentHash": "YCOTtF3NNOQI83PlfjeNDDBkofJDfdET2CwhfQsiVBwmsU6lP19QW9NVTIH9epl+MnOsyFC2G1RnlPSGV8F1FQ==",
+        "dependencies": {
+          "Newtonsoft.Json": "11.0.1"
+        }
+      },
+      "Hangfire.SqlServer": {
+        "type": "CentralTransitive",
+        "requested": "[1.8.23, )",
+        "resolved": "1.8.23",
+        "contentHash": "HiRUbwveK0+wop8iY98Z5DrtfjP+1QCly6IO+21Bnolb5kTO5eCrtKbGErHfhSN0BzKk9ehmTLk9uDHQdAtfcQ==",
+        "dependencies": {
+          "Hangfire.Core": "[1.8.23]"
         }
       },
       "MassTransit": {

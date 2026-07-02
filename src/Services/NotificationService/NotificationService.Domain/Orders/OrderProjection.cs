@@ -99,4 +99,17 @@ public sealed class OrderProjection
             LastUpdatedUtc = occurredAtUtc;
         }
     }
+
+    /// <summary>
+    /// Sepet-terk hatırlatma e-postasının gönderildiğini kaydeder (idempotent: zaten gönderildiyse no-op).
+    /// <c>CartAbandonmentReminderJob</c> çağırır; <see cref="ReminderSentUtc"/> dolu ise tekrar gönderim engellenir.
+    /// </summary>
+    public void MarkReminderSent(DateTime sentAtUtc)
+    {
+        if (ReminderSentUtc is null)
+        {
+            ReminderSentUtc = sentAtUtc;
+            LastUpdatedUtc = sentAtUtc;
+        }
+    }
 }

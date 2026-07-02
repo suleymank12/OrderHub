@@ -2,7 +2,11 @@ using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OrderHub.NotificationService.Application.Abstractions.Notifications;
+using OrderHub.NotificationService.Application.Abstractions.Persistence;
+using OrderHub.NotificationService.Application.Notifications;
 using OrderHub.NotificationService.Infrastructure.Messaging;
+using OrderHub.NotificationService.Infrastructure.Notifications;
 using OrderHub.NotificationService.Infrastructure.Persistence;
 
 namespace OrderHub.NotificationService.Infrastructure;
@@ -47,6 +51,18 @@ public static class DependencyInjection
             EnableAutoCommit = false, // manual Commit, DB commit'ten SONRA (at-least-once).
         }).Build());
         services.AddHostedService<OrderEventsConsumer>();
+
+        // ★ E-posta gönderimi (5f-2): MockEmailSender singleton → IEmailSender alias.
+        // Singleton: thread-safe, tüm scope'lardan tek instance → integration testlerde Sent gözlemlenebilir.
+        services.AddSingleton<MockEmailSender>();
+        services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<MockEmailSender>());
+
+        // Bildirim projection repository: EF Core DbContext ile uyumlu scoped yaşam süresi.
+        services.AddScoped<INotificationOrderRepository, NotificationOrderRepository>();
+
+        // CartAbandonmentReminderJob: Hangfire DI-resolved job (scoped; her job çalışmasında yeni örnek).
+        // ICartAbandonmentScheduler (ve Hangfire.Core) Api katmanında kayıtlıdır — burada YOK.
+        services.AddScoped<CartAbandonmentReminderJob>();
 
         return services;
     }

@@ -16,12 +16,16 @@
     <ProjectReference Include="..\NotificationService.Infrastructure\OrderHub.NotificationService.Infrastructure.csproj" />
   </ItemGroup>
 
-  <!-- JWT/Swagger YOK: NotificationService 5f-1'de HTTP endpoint'siz (Kafka consumer-only). -->
+  <!-- JWT/Swagger YOK: NotificationService 5f-2'de HTTP endpoint'siz (Kafka consumer + Hangfire). -->
   <ItemGroup>
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+    <!-- Hangfire: server (IHostedService) + ASP.NET Core DI entegrasyonu. -->
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <!-- SQL Server storage: HangFire şeması domain DB'sinde (ADR-0003 precedent). -->
+    <PackageReference Include="Hangfire.SqlServer" />
   </ItemGroup>
 
 </Project>

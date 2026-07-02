@@ -12,6 +12,24 @@
           "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
         }
       },
+      "Hangfire.AspNetCore": {
+        "type": "Direct",
+        "requested": "[1.8.23, )",
+        "resolved": "1.8.23",
+        "contentHash": "TXpOl7kX4xXq5bLEqqWCpt9zh3TaouDwtb3GDtzGHX5uSC2RaAqZzn2swevivx3Uki16slXIigiPtgr4TPKpsg==",
+        "dependencies": {
+          "Hangfire.NetCore": "[1.8.23]"
+        }
+      },
+      "Hangfire.SqlServer": {
+        "type": "Direct",
+        "requested": "[1.8.23, )",
+        "resolved": "1.8.23",
+        "contentHash": "HiRUbwveK0+wop8iY98Z5DrtfjP+1QCly6IO+21Bnolb5kTO5eCrtKbGErHfhSN0BzKk9ehmTLk9uDHQdAtfcQ==",
+        "dependencies": {
+          "Hangfire.Core": "[1.8.23]"
+        }
+      },
       "Serilog.AspNetCore": {
         "type": "Direct",
         "requested": "[8.0.3, )",
@@ -73,6 +91,17 @@
           "System.Security.Cryptography.ProtectedData": "4.7.0",
           "System.Text.Json": "4.7.2",
           "System.Threading.Tasks.Extensions": "4.5.4"
+        }
+      },
+      "Hangfire.NetCore": {
+        "type": "Transitive",
+        "resolved": "1.8.23",
+        "contentHash": "SmvUJF/u5MCP666R5Y1V+GntqBc4RCWJqn5ztMMN67d53Cx5cuaWR0YNLMrabjylwLarFYJ7EdR9RnGEZzp/dg==",
+        "dependencies": {
+          "Hangfire.Core": "[1.8.23]",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "3.0.0",
+          "Microsoft.Extensions.Hosting.Abstractions": "3.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "3.0.0"
         }
       },
       "librdkafka.redist": {
@@ -301,6 +330,11 @@
         "type": "Transitive",
         "resolved": "1.0.0",
         "contentHash": "N4KeF3cpcm1PUHym1RmakkzfkEv3GRMyofVv40uXsQhCQeglr2OHNcUk2WOG51AKpGO8ynGpo9M/kFXSzghwug=="
+      },
+      "Newtonsoft.Json": {
+        "type": "Transitive",
+        "resolved": "11.0.1",
+        "contentHash": "pNN4l+J6LlpIvHOeNdXlwxv39NPJ2B5klz+Rd2UQZIx30Squ5oND1Yy3wEAUoKn0GPUj6Yxt9lxlYWQqfZcvKg=="
       },
       "RabbitMQ.Client": {
         "type": "Transitive",
@@ -545,6 +579,7 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[8.0.2, )",
           "OrderHub.NotificationService.Domain": "[1.0.0, )"
         }
       },
@@ -555,10 +590,12 @@
         "type": "Project",
         "dependencies": {
           "Confluent.Kafka": "[2.6.1, )",
+          "Hangfire.Core": "[1.8.23, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[8.0.11, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[8.0.1, )",
+          "Microsoft.Extensions.Options": "[8.0.2, )",
           "OrderHub.Contracts": "[1.0.0, )",
           "OrderHub.EventBus": "[1.0.0, )",
           "OrderHub.Inbox": "[1.0.0, )",
@@ -573,6 +610,15 @@
         "contentHash": "DCap4xzbUzItoFVBCmBbng6q4XbaxfqLgR/b56b67L9S0iUTIwrSAvk3MPegyQNn56+1C/m3ytwy1YU+nAuqDA==",
         "dependencies": {
           "librdkafka.redist": "2.6.1"
+        }
+      },
+      "Hangfire.Core": {
+        "type": "CentralTransitive",
+        "requested": "[1.8.23, )",
+        "resolved": "1.8.23",
+        "contentHash": "YCOTtF3NNOQI83PlfjeNDDBkofJDfdET2CwhfQsiVBwmsU6lP19QW9NVTIH9epl+MnOsyFC2G1RnlPSGV8F1FQ==",
+        "dependencies": {
+          "Newtonsoft.Json": "11.0.1"
         }
       },
       "MassTransit": {

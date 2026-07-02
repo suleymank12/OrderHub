@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OrderHub.NotificationService.Application.Abstractions.Notifications;
+using OrderHub.NotificationService.Application.Abstractions.Scheduling;
 using OrderHub.NotificationService.Domain.Orders;
 using OrderHub.NotificationService.Infrastructure.Persistence;
 using OrderHub.Contracts.Orders;
@@ -19,7 +21,7 @@ namespace OrderHub.NotificationService.Infrastructure.Messaging;
 /// <b>SONRA</b> offset commit. Tip header'dan (<see cref="KafkaMessageHeaders.MessageType"/>) dispatch eder.
 /// <c>enable.auto.commit=false</c>, manual <c>Commit</c>. Singleton consumer → scoped
 /// <see cref="NotificationDbContext"/> her mesajda <see cref="IServiceScopeFactory"/> ile yeni scope'tan resolve.
-/// Revenue YOK (AnalyticsService'e göre daha sade); yalnız projection lifecycle + inbox dedup.
+/// DB commit'ten SONRA yan etki: OrderCreated → reminder zamanla (scheduler opsiyonel), OrderConfirmed → onay e-postası.
 /// </summary>
 internal sealed class OrderEventsConsumer(
     IConsumer<string, string> consumer,
@@ -133,7 +135,9 @@ internal sealed class OrderEventsConsumer(
             using var scope = scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
 
-            switch (await ProcessAsync(context, typeName, result.Message.Value, cancellationToken))
+            var processResult = await ProcessAsync(context, typeName, result.Message.Value, cancellationToken);
+
+            switch (processResult.Outcome)
             {
                 case ProcessOutcome.UnknownType:
                     OrderEventsLog.UnknownType(logger, typeName);
@@ -143,10 +147,11 @@ internal sealed class OrderEventsConsumer(
                     break;
                 default: // Applied → projection + InboxMessage ATOMİK tek SaveChanges.
                     await context.SaveChangesAsync(cancellationToken); // 1) DB COMMIT
+                    await ExecuteSideEffectAsync(scope, processResult.SideEffect, cancellationToken); // 2) e-posta/scheduling
                     break;
             }
 
-            consumer.Commit(result); // 2) ★ DB'den SONRA offset commit (at-least-once).
+            consumer.Commit(result); // 3) ★ DB'den SONRA offset commit (at-least-once).
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -167,9 +172,38 @@ internal sealed class OrderEventsConsumer(
         }
     }
 
+    // DB commit'ten SONRA yan etki: e-posta gönder veya job zamanla. AYNI scope → DbContext request'i kapatmaz.
+    // IEmailSender: ZORUNLU (AddInfrastructure her zaman kaydeder). ICartAbandonmentScheduler: OPSİYONEL
+    // (Api'de kaydedilir; projection-only testlerde yoktur → GetService null döner, skip + debug log).
+    private async Task ExecuteSideEffectAsync(
+        IServiceScope scope, SideEffect sideEffect, CancellationToken cancellationToken)
+    {
+        var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+        var scheduler = scope.ServiceProvider.GetService<ICartAbandonmentScheduler>(); // opsiyonel.
+
+        switch (sideEffect.Kind)
+        {
+            case SideEffectKind.SendConfirmationEmail:
+                await emailSender.SendAsync(
+                    NotificationEmailKind.OrderConfirmed, sideEffect.CustomerId, sideEffect.OrderId, cancellationToken);
+                break;
+            case SideEffectKind.ScheduleReminder:
+                if (scheduler is null)
+                {
+                    OrderEventsLog.SchedulerAbsent(logger, sideEffect.OrderId);
+                }
+                else
+                {
+                    scheduler.ScheduleReminder(sideEffect.OrderId);
+                }
+                break;
+        }
+    }
+
     // Tip header'a göre dispatch + event-id dedup + projection apply. AnalyticsService'e göre DAHA SADE:
     // Revenue/DailyRevenue YOK → Paid da tek UpdateExistingAsync çağrısıyla halledilir.
-    private async Task<ProcessOutcome> ProcessAsync(
+    // Her Applied dönüşünde hangi yan etkinin uygulanacağı da kararlaştırılır (SideEffect struct).
+    private async Task<ProcessResult> ProcessAsync(
         NotificationDbContext context, string typeName, string json, CancellationToken cancellationToken)
     {
         if (typeName == CreatedType)
@@ -177,7 +211,7 @@ internal sealed class OrderEventsConsumer(
             var e = Deserialize<OrderCreatedIntegrationEvent>(json);
             if (await IsDuplicateAsync(context, e.Id, typeName, cancellationToken))
             {
-                return ProcessOutcome.AlreadyProcessed;
+                return new ProcessResult(ProcessOutcome.AlreadyProcessed, default);
             }
 
             if (await context.OrderProjections.FindAsync([e.OrderId], cancellationToken) is null)
@@ -188,7 +222,7 @@ internal sealed class OrderEventsConsumer(
 
             Stamp(context, e.Id, typeName);
             OrderEventsLog.Applied(logger, typeName, e.OrderId);
-            return ProcessOutcome.Applied;
+            return new ProcessResult(ProcessOutcome.Applied, new SideEffect(SideEffectKind.ScheduleReminder, e.OrderId, default));
         }
 
         if (typeName == ConfirmedType)
@@ -196,12 +230,12 @@ internal sealed class OrderEventsConsumer(
             var e = Deserialize<OrderConfirmedIntegrationEvent>(json);
             if (await IsDuplicateAsync(context, e.Id, typeName, cancellationToken))
             {
-                return ProcessOutcome.AlreadyProcessed;
+                return new ProcessResult(ProcessOutcome.AlreadyProcessed, default);
             }
 
             await UpdateExistingAsync(context, e.OrderId, p => p.MarkConfirmed(e.OccurredOnUtc), typeName, cancellationToken);
             Stamp(context, e.Id, typeName);
-            return ProcessOutcome.Applied;
+            return new ProcessResult(ProcessOutcome.Applied, new SideEffect(SideEffectKind.SendConfirmationEmail, e.OrderId, e.CustomerId));
         }
 
         if (typeName == PaidType)
@@ -209,12 +243,12 @@ internal sealed class OrderEventsConsumer(
             var e = Deserialize<OrderPaidIntegrationEvent>(json);
             if (await IsDuplicateAsync(context, e.Id, typeName, cancellationToken))
             {
-                return ProcessOutcome.AlreadyProcessed;
+                return new ProcessResult(ProcessOutcome.AlreadyProcessed, default);
             }
 
             await UpdateExistingAsync(context, e.OrderId, p => p.MarkPaid(e.OccurredOnUtc), typeName, cancellationToken);
             Stamp(context, e.Id, typeName);
-            return ProcessOutcome.Applied;
+            return new ProcessResult(ProcessOutcome.Applied, default);
         }
 
         if (typeName == CancelledType)
@@ -222,15 +256,15 @@ internal sealed class OrderEventsConsumer(
             var e = Deserialize<OrderCancelledIntegrationEvent>(json);
             if (await IsDuplicateAsync(context, e.Id, typeName, cancellationToken))
             {
-                return ProcessOutcome.AlreadyProcessed;
+                return new ProcessResult(ProcessOutcome.AlreadyProcessed, default);
             }
 
             await UpdateExistingAsync(context, e.OrderId, p => p.MarkCancelled(e.OccurredOnUtc), typeName, cancellationToken);
             Stamp(context, e.Id, typeName);
-            return ProcessOutcome.Applied;
+            return new ProcessResult(ProcessOutcome.Applied, default);
         }
 
-        return ProcessOutcome.UnknownType;
+        return new ProcessResult(ProcessOutcome.UnknownType, default);
     }
 
     private static async Task<bool> IsDuplicateAsync(
@@ -241,12 +275,13 @@ internal sealed class OrderEventsConsumer(
     private static void Stamp(NotificationDbContext context, Guid eventId, string typeName) =>
         context.InboxMessages.Add(InboxMessage.Create(eventId, typeName));
 
-    private enum ProcessOutcome
-    {
-        Applied,
-        AlreadyProcessed,
-        UnknownType,
-    }
+    private enum ProcessOutcome { Applied, AlreadyProcessed, UnknownType }
+
+    private enum SideEffectKind { None, ScheduleReminder, SendConfirmationEmail }
+
+    private readonly record struct SideEffect(SideEffectKind Kind, Guid OrderId, Guid CustomerId);
+
+    private readonly record struct ProcessResult(ProcessOutcome Outcome, SideEffect SideEffect);
 
     private async Task UpdateExistingAsync(
         NotificationDbContext context, Guid orderId, Action<OrderProjection> apply, string typeName, CancellationToken cancellationToken)
