@@ -20,6 +20,10 @@
     <PackageReference Include="Testcontainers.Kafka" />
     <!-- ConfigurationBuilder + AddInMemoryCollection: test BuildProvider'larında IConfiguration üretmek için. -->
     <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <!-- 5f-3 cart-abandonment e2e: WebApplicationFactory tam Program (Hangfire server + consumer) boot eder. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <!-- Hangfire JobStorage/IMonitoringApi: reminder job'un Succeeded'e ulaştığını doğrula (guard negatif assertion'ını meşru kılar). -->
+    <PackageReference Include="Hangfire.Core" />
   </ItemGroup>
 
 </Project>
