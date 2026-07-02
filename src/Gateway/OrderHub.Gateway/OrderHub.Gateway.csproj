@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.Gateway</AssemblyName>
+    <RootNamespace>OrderHub.Gateway</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Internal tipler (JwtSettings vb.) yalnızca integration test assembly'sine açılır (§9). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.Gateway.IntegrationTests" />
+  </ItemGroup>
+
+  <!-- ★ SAF EDGE: OrderHub.Contracts'a veya HİÇBİR servis projesine ProjectReference YOK.
+       Gateway HTTP forward eder (YARP), domain tipi bilmez; stateless (DB/EF/migration yok). -->
+  <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Seq" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+</Project>

@@ -273,6 +273,34 @@ services:
     networks:
       - orderhub
 
+  gateway:
+    build:
+      context: .. # repo kökü (diğer servislerle aynı context)
+      dockerfile: src/Gateway/OrderHub.Gateway/Dockerfile
+    environment:
+      # ADR-0001 mirror: dev-token route'unun (OrderService dev-only endpoint) çalışması için Development.
+      ASPNETCORE_ENVIRONMENT: Development
+      # ★ JWT MERKEZİ: downstream servislerle AYNI secret → OrderService'in ürettiği token gateway'de de geçerli
+      # (merkezi erken-401 + downstream defense-in-depth). Secret env'den (K3); Issuer/Audience appsettings'te.
+      JwtSettings__Secret: ${JWT_SECRET}
+      # ReverseProxy destination'ları appsettings'te compose service adlarıyla default (orderservice:8080 vb) → override YOK.
+      # Seq sink yalnızca container'da aktif (index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # Saf edge: DB/RabbitMQ/Kafka YOK (YARP HTTP forward eder).
+    depends_on:
+      orderservice:
+        condition: service_started # route hedefi (YARP bağlanamazsa retry eder → health beklemeye gerek yok)
+      paymentservice:
+        condition: service_started
+      analyticsservice:
+        condition: service_started
+      seq:
+        condition: service_started
+    # restart YOK: startup hatası (eksik secret / config) görünür kalsın.
+    networks:
+      - orderhub
+
 networks:
   orderhub:
     driver: bridge

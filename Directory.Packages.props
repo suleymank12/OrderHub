@@ -97,6 +97,12 @@
     <PackageVersion Include="AspNetCore.HealthChecks.SqlServer" Version="8.0.2" />
   </ItemGroup>
 
+  <ItemGroup Label="Gateway (YARP reverse proxy)">
+    <!-- YARP 2.x: net8 uyumlu reverse proxy (CLAUDE.md §3 stack kilidi). Microsoft.Extensions.* 8.x'e bağlı →
+         EF Core 8 / .NET 8 LTS kilidini DELMEZ (Faz 5 EF Core 9 dersi; locked-mode restore ile doğrulanır). -->
+    <PackageVersion Include="Yarp.ReverseProxy" Version="2.2.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Test (ortak + projeye özel)">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
@@ -112,6 +118,8 @@
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <!-- Gateway integration testlerinde downstream stub (YARP route/forward doğrulaması). net8 uyumlu. -->
+    <PackageVersion Include="WireMock.Net" Version="1.6.7" />
   </ItemGroup>
 
 </Project>
