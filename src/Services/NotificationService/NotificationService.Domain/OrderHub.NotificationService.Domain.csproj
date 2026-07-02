@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.NotificationService.Domain</AssemblyName>
+    <RootNamespace>OrderHub.NotificationService.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Read-side projection self-contained (BCL primitive'leri) → bağımlılık YOK (AnalyticsService.Domain ile aynı pattern). -->
+
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.NotificationService.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.NotificationService.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Infrastructure: AddInfrastructure (consumer + DbContext). Api: InternalsVisibleTo açar (NotificationDbContext). -->
+    <ProjectReference Include="..\..\src\Services\NotificationService\NotificationService.Api\OrderHub.NotificationService.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\NotificationService\NotificationService.Infrastructure\OrderHub.NotificationService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Burada projeye özel olanlar. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <!-- Gerçek Kafka container'a order event'leri produce edip consumer'ı doğrulamak için. -->
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Testcontainers.Kafka" />
+    <!-- ConfigurationBuilder + AddInMemoryCollection: test BuildProvider'larında IConfiguration üretmek için. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+  </ItemGroup>
+
+</Project>

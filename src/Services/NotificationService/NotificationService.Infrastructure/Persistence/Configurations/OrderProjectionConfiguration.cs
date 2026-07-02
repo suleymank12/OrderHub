@@ -1,0 +1,38 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OrderHub.NotificationService.Domain.Orders;
+using OrderHub.NotificationService.Infrastructure.Persistence.Converters;
+
+namespace OrderHub.NotificationService.Infrastructure.Persistence.Configurations;
+
+/// <summary>
+/// <see cref="OrderProjection"/> read-model eşlemesi. PK = <see cref="OrderProjection.OrderId"/> (client-side,
+/// upsert anahtarı). <see cref="OrderProjection.Status"/> string olarak saklanır (HasConversion). <c>*_at</c>
+/// kolonları UTC-koruyucu converter ile. <see cref="OrderProjection.ReminderSentUtc"/> 5f-2 için nullable.
+/// <see cref="OrderProjection.CustomerId"/> sorgu için index'li.
+/// </summary>
+internal sealed class OrderProjectionConfiguration : IEntityTypeConfiguration<OrderProjection>
+{
+    public void Configure(EntityTypeBuilder<OrderProjection> builder)
+    {
+        builder.ToTable("OrderProjections");
+
+        builder.HasKey(projection => projection.OrderId);
+        builder.Property(projection => projection.OrderId).ValueGeneratedNever();
+
+        builder.Property(projection => projection.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(projection => projection.Total).HasColumnType("decimal(18,2)");
+        builder.Property(projection => projection.Currency).IsRequired().HasMaxLength(3);
+
+        builder.Property(projection => projection.CreatedAtUtc).HasConversion<UtcDateTimeConverter>();
+        builder.Property(projection => projection.ReminderSentUtc).HasConversion(new NullableUtcDateTimeConverter());
+        builder.Property(projection => projection.LastUpdatedUtc).HasConversion<UtcDateTimeConverter>();
+
+        builder.HasIndex(projection => projection.CustomerId)
+            .HasDatabaseName("IX_OrderProjections_CustomerId");
+    }
+}
