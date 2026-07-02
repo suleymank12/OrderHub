@@ -187,6 +187,92 @@ services:
     networks:
       - orderhub
 
+  inventoryservice:
+    build:
+      context: .. # repo kökü (order/payment/analytics ile aynı context)
+      dockerfile: src/Services/InventoryService/InventoryService.Api/Dockerfile
+    environment:
+      # ADR-0001: local dev Development'ta (startup migration). Database-per-service → DÖRDÜNCÜ DB (OrderHub_Inventory).
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Inventory;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      # RabbitMq (5c): saga command'lerini (ReserveStock/Confirm/Release) tüketir + sonuç event'lerini publish eder.
+      # appsettings dev default localhost → compose'da broker host'una override (K3, secret env'den).
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # JWT YOK: HTTP endpoint yok (command-driven) → secret gerekmez (K3). Kafka YOK: Inventory Kafka'ya
+      # produce/consume etmez (saga RabbitMQ command-style, ADR-0007 Karar 4).
+    depends_on:
+      sqlserver:
+        condition: service_healthy # OrderHub_Inventory migration'ı için DB hazır olmalı
+      rabbitmq:
+        condition: service_healthy # consumer/publisher broker hazır olmadan bağlanmasın (5c)
+      seq:
+        condition: service_started
+    # restart YOK: startup/migration hatası görünür kalsın (order/payment/analytics kuralı).
+    networks:
+      - orderhub
+
+  orderprocessingservice:
+    build:
+      context: .. # repo kökü (diğer servislerle aynı context)
+      dockerfile: src/Services/OrderProcessingService/OrderProcessingService.Api/Dockerfile
+    environment:
+      # ADR-0001: local dev Development'ta (startup migration). Database-per-service → BEŞİNCİ DB (OrderHub_Sagas).
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Sagas;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      # RabbitMq (5d): saga, OrderPlaced'ı tüketir + ReserveStock/Confirm/Release/ProcessPayment/ConfirmOrder/
+      # MarkOrderPaid/ShipOrder command'lerini yayımlar (ADR-0007 Karar 4). appsettings dev default localhost →
+      # compose'da broker host'una override (K3, secret env'den).
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # JWT YOK: HTTP endpoint yok (saga RabbitMQ ile orkestre eder) → secret gerekmez (K3). Kafka YOK
+      # (saga RabbitMQ command-style, ADR-0007 Karar 4). Hangfire YOK (scheduler InventoryService'te).
+    depends_on:
+      sqlserver:
+        condition: service_healthy # OrderHub_Sagas migration'ı için DB hazır olmalı
+      rabbitmq:
+        condition: service_healthy # saga endpoint broker hazır olmadan bağlanmasın (5d)
+      seq:
+        condition: service_started
+    # restart YOK: startup/migration hatası görünür kalsın (diğer servislerle aynı kural).
+    networks:
+      - orderhub
+
+  notificationservice:
+    build:
+      context: .. # repo kökü (diğer servislerle aynı context)
+      dockerfile: src/Services/NotificationService/NotificationService.Api/Dockerfile
+    environment:
+      # ADR-0001: local dev Development'ta (startup migration). Database-per-service → ALTINCI DB (OrderHub_Notifications).
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=OrderHub_Notifications;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+      # Kafka consumer (OrderEventsConsumer): GroupId notification-service.order-events → AnalyticsService'den FARKLI
+      # (her iki consumer aynı topic'ten bağımsız okur, tam fan-out). appsettings dev default localhost → container override.
+      Kafka__BootstrapServers: kafka:9092
+      Kafka__GroupId: notification-service.order-events
+      # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # JWT YOK: HTTP endpoint yok (Kafka consumer-only) → secret gerekmez (K3). RabbitMQ YOK.
+    depends_on:
+      sqlserver:
+        condition: service_healthy # OrderHub_Notifications migration'ı için DB hazır olmalı
+      kafka:
+        condition: service_healthy # consumer bağlanmadan önce broker hazır olmalı
+      seq:
+        condition: service_started
+    # restart YOK: startup/migration hatası görünür kalsın (diğer servislerle aynı kural).
+    networks:
+      - orderhub
+
 networks:
   orderhub:
     driver: bridge

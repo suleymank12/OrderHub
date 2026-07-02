@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.InventoryService.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.InventoryService.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+    <!-- 5c: handler testleri — InternalsVisibleTo Application.csproj'da mevcut. -->
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Application\OrderHub.InventoryService.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <!-- Handler testleri: IInventoryRepository mock'u. -->
+    <PackageReference Include="Moq" />
+  </ItemGroup>
+
+</Project>

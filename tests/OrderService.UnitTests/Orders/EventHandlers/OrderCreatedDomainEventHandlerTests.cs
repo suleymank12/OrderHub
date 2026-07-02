@@ -27,9 +27,10 @@ public sealed class OrderCreatedDomainEventHandlerTests
 
     private static DomainEventNotification<OrderCreated> BuildNotification(Guid orderId)
     {
-        // OrderCreated için geçerli Money gerekiyor; MoneyFactory'nin default'u yeterli.
+        // OrderCreated için geçerli Money gerekiyor; MoneyFactory'nin default'u yeterli. Items handler'ı
+        // ilgilendirmez (yalnız OrderId okur) → boş liste yeterli.
         var money = MoneyFactory.Default();
-        var domainEvent = new OrderCreated(orderId, Guid.NewGuid(), money);
+        var domainEvent = new OrderCreated(orderId, Guid.NewGuid(), money, []);
         return new DomainEventNotification<OrderCreated>(domainEvent);
     }
 

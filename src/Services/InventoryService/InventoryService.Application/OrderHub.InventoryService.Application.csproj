@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.InventoryService.Application</AssemblyName>
+    <RootNamespace>OrderHub.InventoryService.Application</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Handler/behavior'lar internal (§9); yalnızca test ve Infrastructure'a açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.InventoryService.UnitTests" />
+    <InternalsVisibleTo Include="OrderHub.InventoryService.Infrastructure" />
+    <!-- ExpireStockReservationsJob (internal) integration test'ten doğrudan çözümlenir (5c job testi). -->
+    <InternalsVisibleTo Include="OrderHub.InventoryService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+    <!-- InventoryService.Application Result/Error API'sini doğrudan kullanır; Domain transitively getiriyor
+         olsa da explicit bağımlılık niyeti açıklar ve lock-file kesinliği sağlar. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Common\OrderHub.Common.csproj" />
+  </ItemGroup>
+
+  <!-- Versiyonlar kök Directory.Packages.props'ta (CPM). -->
+  <!-- NOT: Mapster / MapsterMapper eklenmedi — InventoryService salt komut güdümlüdür, okuma DTO'su yok;
+       kullanılmayan bağımlılık K2 ihlali sayılır. MockProcessor da yok (stateless processor pattern
+       bu serviste yer almaz). -->
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

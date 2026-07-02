@@ -41,6 +41,9 @@ public sealed class Order : AggregateRoot<Guid>
     /// <summary>Ödenme zamanı (UTC); ödenmediyse null.</summary>
     public DateTime? PaidAtUtc { get; private set; }
 
+    /// <summary>Kargolanma zamanı (UTC); kargolanmadıysa null.</summary>
+    public DateTime? ShippedAtUtc { get; private set; }
+
     /// <summary>İptal zamanı (UTC); iptal edilmediyse null.</summary>
     public DateTime? CancelledAtUtc { get; private set; }
 
@@ -80,7 +83,11 @@ public sealed class Order : AggregateRoot<Guid>
         };
 
         order._items.AddRange(itemList);
-        order.RaiseDomainEvent(new OrderCreated(order.Id, customerId, order.Total));
+        order.RaiseDomainEvent(new OrderCreated(
+            order.Id,
+            customerId,
+            order.Total,
+            itemList.Select(item => new OrderCreatedItem(item.ProductId, item.Quantity)).ToList()));
         return order;
     }
 
@@ -129,16 +136,46 @@ public sealed class Order : AggregateRoot<Guid>
     }
 
     /// <summary>
-    /// Siparişi iptal eder (yalnızca Pending/Confirmed) ve <see cref="OrderCancelled"/> yükseltir.
-    /// <paramref name="reason"/> boş → <see cref="ArgumentException"/>; iptal edilemez durumda
-    /// (Paid/Shipped/Cancelled) → <see cref="InvalidOrderStatusTransitionException"/>. Paid iptali
-    /// refund/compensation gerektirir → Faz 5 saga.
+    /// Siparişi kargolanmış işaretler (Paid → Shipped) ve <see cref="OrderShipped"/> yükseltir. <b>Idempotent</b>:
+    /// zaten Shipped ise no-op (throw etmez — at-least-once saga-command teslimatı + status guard precedent'i,
+    /// <see cref="MarkPaid"/> ile aynı; no-op'ta yeni event yok). Paid dışındaki durumlardan (örn. Confirmed/
+    /// Cancelled) → <see cref="InvalidOrderStatusTransitionException"/>.
+    /// </summary>
+    public void Ship()
+    {
+        if (Status == OrderStatus.Shipped)
+        {
+            return; // Idempotent no-op: aynı ShipOrder ikinci kez gelirse güvenli.
+        }
+
+        if (Status != OrderStatus.Paid)
+        {
+            throw new InvalidOrderStatusTransitionException(Status, OrderStatus.Shipped);
+        }
+
+        Status = OrderStatus.Shipped;
+        ShippedAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new OrderShipped(Id));
+    }
+
+    /// <summary>
+    /// Siparişi iptal eder (Pending/Confirmed → Cancelled) ve <see cref="OrderCancelled"/> yükseltir.
+    /// <b>Idempotent</b>: zaten Cancelled ise no-op (throw etmez, yeni event yok — at-least-once saga-command
+    /// teslimatı + <see cref="MarkPaid"/>/<see cref="Ship"/> idempotency precedent'i). <paramref name="reason"/>
+    /// boş → <see cref="ArgumentException"/>; Paid/Shipped'ten iptal → <see cref="InvalidOrderStatusTransitionException"/>
+    /// (refund/compensation gerektirir, kapsam dışı — saga telafisi bu state'lere ulaşmaz: AwaitingStockConfirmation
+    /// forward-only).
     /// </summary>
     public void Cancel(string reason)
     {
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("Cancellation reason cannot be empty.", nameof(reason));
+        }
+
+        if (Status == OrderStatus.Cancelled)
+        {
+            return; // Idempotent no-op: aynı CancelOrder ikinci kez gelirse güvenli (yeni OrderCancelled yükselmez).
         }
 
         if (Status is not (OrderStatus.Pending or OrderStatus.Confirmed))

@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.InventoryService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.InventoryService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- DbContext/configuration internal (§9); yalnızca integration test assembly'sine açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.InventoryService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InventoryService.Application\OrderHub.InventoryService.Application.csproj" />
+    <!-- Domain: Entity konfigürasyonları ve StockItem/Reservation/Product aggregate'leri. -->
+    <ProjectReference Include="..\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+    <!-- Outbox writer: OutboxInterceptor + IOutboxDbContext + OutboxMessage(Configuration). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Outbox\OrderHub.Outbox.csproj" />
+    <!-- Inbox: IInboxDbContext + InboxMessage(Configuration) + consume filter. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
+    <!-- Transport (RabbitMQ): AddRabbitMqEventBus + RabbitMqOptions (outbox processor publish hedefi). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- Integration event sözleşmeleri: ReserveStock/Confirm/Release consume + StockReserved/Failed/Released/Expired publish (outbox Map). -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- IBackgroundJobClient / IRecurringJobManager soyutlamaları: recurring registrar Application
+         port'larını burada (Infrastructure) implement eder (DIP). Hangfire hosting (server/dashboard) Api'de kalır. -->
+    <PackageReference Include="Hangfire.Core" />
+    <!-- RecurringJobRegistrar IHostedService olarak expiry job'unu startup'ta kaydeder. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <!-- RabbitMqOptions'ı config'ten bağlamak için ConfigurationBinder.Get<T>(). -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <!-- Consumer'lar ISender ile MediatR'a delege eder ve ValidationException (poison message) yakalar →
+         doğrudan kullanım, transitive'e güvenme. -->
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: sadece migration üretimi için; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

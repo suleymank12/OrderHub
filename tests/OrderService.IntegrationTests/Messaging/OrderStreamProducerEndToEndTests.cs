@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using OrderHub.Contracts.Orders;
-using OrderHub.Contracts.Payments;
 using OrderHub.EventBus;
 using OrderHub.EventBus.Kafka;
 using OrderHub.OrderService.Domain.Orders.Events;
@@ -21,12 +20,11 @@ using OrderHub.Outbox;
 namespace OrderHub.OrderService.IntegrationTests.Messaging;
 
 /// <summary>
-/// Faz 4 Adım 4b — <b>gerçek Kafka</b> producer + 1:N <b>canlı</b> kanıt (ADR-0006). Bir OrderConfirmed işlenince
-/// outbox processor 1:N fan-out eder: <c>ProcessPaymentIntegrationEvent</c> (IRabbitMqEvent) → RabbitMQ publisher
-/// (capturing stub) + <c>OrderConfirmedIntegrationEvent</c> (IKafkaEvent) → gerçek Kafka topic. Tek dış broker =
-/// Kafka (RabbitMQ tarafı 3c-4'te zaten gerçek-broker doğrulandı; burada routing'i izole etmek için stub →
-/// deterministik, tek container). Processor 3d-4 pattern'iyle manuel start edilir. Production wiring (AddInfrastructure
-/// → AddKafkaRouting) kullanılır; yalnız RabbitMQ keyed publisher + IProducer test-özel override edilir.
+/// <b>Gerçek Kafka</b> producer + 1:N <b>canlı</b> kanıt (ADR-0006), Faz 5 5d-5b cutover ile güncel. Bir OrderCreated
+/// işlenince outbox processor 1:N fan-out eder: <c>OrderPlacedIntegrationEvent</c> (IRabbitMqEvent, saga trigger) →
+/// RabbitMQ publisher (capturing stub) + <c>OrderCreatedIntegrationEvent</c> (IKafkaEvent) → gerçek Kafka topic.
+/// Tek dış broker = Kafka (RabbitMQ tarafı routing'i izole etmek için stub → deterministik). Processor manuel
+/// start edilir. Production wiring (AddInfrastructure → AddKafkaRouting); yalnız RabbitMQ keyed publisher + IProducer override.
 /// </summary>
 [Collection(KafkaEndToEndCollection.Name)]
 public sealed class OrderStreamProducerEndToEndTests(SqlServerContainerFixture sql, KafkaContainerFixture kafka)
@@ -34,11 +32,11 @@ public sealed class OrderStreamProducerEndToEndTests(SqlServerContainerFixture s
     private static readonly JsonSerializerOptions PayloadOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public async Task ConfirmedOrder_ProcessorFansOut_ProcessPaymentToRabbitMq_AndOrderConfirmedToRealKafka()
+    public async Task CreatedOrder_ProcessorFansOut_OrderPlacedToRabbitMq_AndOrderCreatedToRealKafka()
     {
         var capture = new CapturingPublisher();
         var orderId = Guid.Empty;
-        var confirmedEventId = Guid.Empty;
+        var createdEventId = Guid.Empty;
         await using var provider = BuildProvider(capture);
 
         var processor = provider.GetServices<IHostedService>().Single();
@@ -48,28 +46,27 @@ public sealed class OrderStreamProducerEndToEndTests(SqlServerContainerFixture s
             using (var scope = provider.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
-                var order = OrderTestData.NewOrder();
-                order.Confirm();
+                var order = OrderTestData.NewOrder(); // yalnız OrderCreated.
                 orderId = order.Id;
-                confirmedEventId = order.DomainEvents.OfType<OrderConfirmed>().Single().EventId;
+                createdEventId = order.DomainEvents.OfType<OrderCreated>().Single().EventId;
                 context.Orders.Add(order);
-                await context.SaveChangesAsync(); // outbox: OrderCreated + ProcessPayment(Ordinal 0) + OrderConfirmed(Ordinal 1)
+                await context.SaveChangesAsync(); // outbox: OrderCreated(Kafka, Ordinal 0) + OrderPlaced(RabbitMQ, Ordinal 1)
             }
 
-            // ★ 1:N canlı — RabbitMQ tarafı: routing ProcessPayment'i RabbitMQ publisher'a yönlendirdi (capture).
+            // ★ 1:N canlı — RabbitMQ tarafı: routing OrderPlaced'i RabbitMQ publisher'a yönlendirdi (capture, saga trigger).
             await WaitUntilAsync(
-                () => capture.Captured.OfType<ProcessPaymentIntegrationEvent>().Any(e => e.OrderId == orderId),
+                () => capture.Captured.OfType<OrderPlacedIntegrationEvent>().Any(e => e.OrderId == orderId),
                 TimeSpan.FromSeconds(30));
 
-            // ★ 1:N canlı — Kafka tarafı: aynı OrderConfirmed GERÇEK Kafka topic'ine düştü (header tip = OrderConfirmed).
-            var kafkaEvent = ConsumeOrderConfirmed(kafka.BootstrapServers, orderId, TimeSpan.FromSeconds(60));
-            kafkaEvent.Should().NotBeNull("OrderConfirmed Kafka'ya publish edilmeli (1:N fan-out canlı)");
+            // ★ 1:N canlı — Kafka tarafı: aynı OrderCreated GERÇEK Kafka topic'ine düştü (header tip = OrderCreated).
+            var kafkaEvent = ConsumeOrderCreated(kafka.BootstrapServers, orderId, TimeSpan.FromSeconds(60));
+            kafkaEvent.Should().NotBeNull("OrderCreated Kafka'ya publish edilmeli (1:N fan-out canlı)");
             kafkaEvent!.OrderId.Should().Be(orderId);
-            kafkaEvent.Id.Should().Be(confirmedEventId, "Kafka event Id == OrderConfirmed.EventId (uçtan uca dedup)");
+            kafkaEvent.Id.Should().Be(createdEventId, "Kafka event Id == OrderCreated.EventId (uçtan uca dedup)");
 
-            // Bütünlük: ProcessPayment (RabbitMQ) ile OrderConfirmed (Kafka) AYNI EventId'den fan-out etti.
-            capture.Captured.OfType<ProcessPaymentIntegrationEvent>().Single(e => e.OrderId == orderId)
-                .Id.Should().Be(confirmedEventId);
+            // Bütünlük: OrderPlaced (RabbitMQ) ile OrderCreated (Kafka) AYNI EventId'den fan-out etti.
+            capture.Captured.OfType<OrderPlacedIntegrationEvent>().Single(e => e.OrderId == orderId)
+                .Id.Should().Be(createdEventId);
         }
         finally
         {
@@ -78,7 +75,7 @@ public sealed class OrderStreamProducerEndToEndTests(SqlServerContainerFixture s
         }
     }
 
-    private static OrderConfirmedIntegrationEvent? ConsumeOrderConfirmed(string bootstrapServers, Guid orderId, TimeSpan timeout)
+    private static OrderCreatedIntegrationEvent? ConsumeOrderCreated(string bootstrapServers, Guid orderId, TimeSpan timeout)
     {
         var config = new ConsumerConfig
         {
@@ -102,12 +99,12 @@ public sealed class OrderStreamProducerEndToEndTests(SqlServerContainerFixture s
 
                 // Tip header'dan dispatch (OrderCreated ve OrderConfirmed aynı JSON şekline sahip → header şart).
                 if (!result.Message.Headers.TryGetLastBytes(KafkaMessageHeaders.MessageType, out var typeBytes) ||
-                    Encoding.UTF8.GetString(typeBytes) != typeof(OrderConfirmedIntegrationEvent).FullName)
+                    Encoding.UTF8.GetString(typeBytes) != typeof(OrderCreatedIntegrationEvent).FullName)
                 {
                     continue;
                 }
 
-                var integrationEvent = JsonSerializer.Deserialize<OrderConfirmedIntegrationEvent>(result.Message.Value, PayloadOptions);
+                var integrationEvent = JsonSerializer.Deserialize<OrderCreatedIntegrationEvent>(result.Message.Value, PayloadOptions);
                 if (integrationEvent?.OrderId == orderId)
                 {
                     return integrationEvent;

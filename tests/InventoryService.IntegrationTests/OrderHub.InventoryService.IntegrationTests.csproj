@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.InventoryService.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.InventoryService.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Infrastructure\OrderHub.InventoryService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Domain\OrderHub.InventoryService.Domain.csproj" />
+    <!-- 5c: AddApplication() DI + ExpireStockReservationsJob (internal, InternalsVisibleTo Application.csproj'a eklendi). -->
+    <ProjectReference Include="..\..\src\Services\InventoryService\InventoryService.Application\OrderHub.InventoryService.Application.csproj" />
+    <!-- Integration event contract tipleri (consumer E2E testleri). -->
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <!-- 5c: gerçek RabbitMQ broker üzerinden consumer uçtan uca testi. -->
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <!-- BuildProvider'da ConfigurationBuilder + AddInMemoryCollection için (Api proj. yok → transitive gelmez). -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+  </ItemGroup>
+
+</Project>

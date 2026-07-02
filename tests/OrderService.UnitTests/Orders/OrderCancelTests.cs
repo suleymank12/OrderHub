@@ -71,13 +71,39 @@ public sealed class OrderCancelTests
     }
 
     [Fact]
-    public void Cancel_AlreadyCancelledOrder_ThrowsInvalidOrderStatusTransitionException()
+    public void Cancel_AlreadyCancelledOrder_IsIdempotentNoOp()
     {
         var order = OrderFactory.CancelledOrder();
+        var eventsBefore = order.DomainEvents.OfType<OrderCancelled>().Count();
 
         var act = () => order.Cancel("again");
 
+        // 5e-1: already-Cancelled → no-op (throw YOK, yeni event yok — MarkPaid/Ship idempotency precedent'i).
+        act.Should().NotThrow();
+        order.Status.Should().Be(OrderStatus.Cancelled);
+        order.DomainEvents.OfType<OrderCancelled>().Should().HaveCount(eventsBefore, "ikinci kez OrderCancelled yükselmemeli");
+    }
+
+    [Fact]
+    public void Cancel_PaidOrder_ThrowsInvalidOrderStatusTransitionException()
+    {
+        var order = OrderFactory.PaidOrder();
+
+        var act = () => order.Cancel("too late");
+
+        // Paid iptali refund/compensation gerektirir (kapsam dışı) → throw korunur.
         act.Should().Throw<InvalidOrderStatusTransitionException>()
-            .Which.From.Should().Be(OrderStatus.Cancelled);
+            .Which.From.Should().Be(OrderStatus.Paid);
+    }
+
+    [Fact]
+    public void Cancel_ShippedOrder_ThrowsInvalidOrderStatusTransitionException()
+    {
+        var order = OrderFactory.ShippedOrder();
+
+        var act = () => order.Cancel("too late");
+
+        act.Should().Throw<InvalidOrderStatusTransitionException>()
+            .Which.From.Should().Be(OrderStatus.Shipped);
     }
 }

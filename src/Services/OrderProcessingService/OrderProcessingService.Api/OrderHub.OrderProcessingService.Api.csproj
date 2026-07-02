@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.OrderProcessingService.Api</AssemblyName>
+    <RootNamespace>OrderHub.OrderProcessingService.Api</RootNamespace>
+  </PropertyGroup>
+
+  <!-- internal tipler (ApiServicesExtensions vb.) yalnızca integration test assembly'sine açılır (§9). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.OrderProcessingService.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Saga host: yalnız Infrastructure (DbContext + MassTransit saga + RabbitMQ). Application/Domain katmanı yok. -->
+    <ProjectReference Include="..\OrderProcessingService.Infrastructure\OrderHub.OrderProcessingService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- JWT/Swashbuckle YOK: HTTP endpoint yok (saga RabbitMQ ile orkestre eder, command-driven). Hangfire YOK
+       (scheduler InventoryService'te). Yalnız health + Serilog. -->
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Seq" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+  </ItemGroup>
+
+</Project>

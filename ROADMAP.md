@@ -374,10 +374,10 @@ Mülakatta savunacağın asıl argüman bu — ADR'yi ciddi yaz.
 
 ## 5.1 InventoryService
 
-- [ ] Clean Architecture
-- [ ] `Product`, `StockItem`, `Reservation` aggregate'leri
-- [ ] `ReserveStockCommand`, `ReleaseStockCommand`, `ConfirmStockReservationCommand`
-- [ ] Reservation expiry (15 dk, Hangfire ile)
+- [x] Clean Architecture
+- [x] `Product`, `StockItem`, `Reservation` aggregate'leri
+- [x] `ReserveStockCommand`, `ReleaseStockCommand`, `ConfirmStockReservationCommand`
+- [x] Reservation expiry (15 dk, Hangfire ile)
 
 ## 5.2 Saga — OrderProcessingSaga
 
@@ -397,22 +397,22 @@ StockReservationFailed → CancelOrder
 PaymentFailed → ReleaseStock → CancelOrder
 ```
 
-- [ ] Saga state'i persisted (EF Core saga repository, kendi DB'si: `OrderHub_Sagas`)
-- [ ] Each saga step idempotent, timeout'lar tanımlı
-- [ ] Saga compensation: payment fail → stock release event publish
+- [x] Saga state'i persisted (EF Core saga repository, kendi DB'si: `OrderHub_Sagas`)
+- [x] Each saga step idempotent, timeout'lar tanımlı
+- [x] Saga compensation: payment fail → stock release event publish
 
 ## 5.3 NotificationService
 
-- [ ] Mock servis: console'a "Email sent: ..." log atar
-- [ ] Kafka consumer: `order-hub.orders.events` → `OrderConfirmed` → notification log
-- [ ] Hangfire ile delayed notification ("cart abandonment" 1 saat sonra)
+- [x] Mock servis: console'a "Email sent: ..." log atar
+- [x] Kafka consumer: `order-hub.orders.events` → `OrderConfirmed` → notification log (AYRI consumer group → Kafka fan-out)
+- [x] Hangfire ile delayed notification ("cart abandonment", config-driven 1 saat; fire-guard: Paid/Cancelled → no-op)
 
 ## 5.4 Testler
 
-- [ ] Saga happy path
-- [ ] Saga compensation: stock fail
-- [ ] Saga compensation: payment fail after stock reserved → stock release verify
-- [ ] Saga timeout: reservation 15 dk dolarsa otomatik cancel
+- [x] Saga happy path (InMemory harness 5d-4b + gerçek RabbitMQ+SQL e2e 5d-7 + tam-stack fresh-volume smoke 5g)
+- [x] Saga compensation: stock fail (partial release — InMemory 5e-2 + gerçek altyapı e2e 5e-3 + tam-stack smoke 5g)
+- [x] Saga compensation: payment fail after stock reserved → stock release verify (fan-in release → CancelOrder, e2e 5e-3)
+- [~] Saga timeout: reservation 15 dk dolarsa otomatik cancel — **mekanizma tam** (Inventory Hangfire expiry → `StockReservationExpired` → saga compensation dalı, KN-3) + **unit kanıtlı** (5e-2 `StockReservationExpired_TriggersCompensation`); **tam-süreli (15 dk) e2e YOK** (time-manipulation gerektirir — dürüst açık kalan, mekanizma+unit yeterli sayıldı)
 
 ## 5.5 Kabul Kriteri
 
@@ -494,12 +494,17 @@ PaymentFailed → ReleaseStock → CancelOrder
 
 ## 7.2 ADR'ler
 
-- [ ] 0001 — RabbitMQ vs Kafka — neden ikisi de
-- [ ] 0002 — Outbox pattern adoption
-- [ ] 0003 — Database-per-service
-- [ ] 0004 — Saga orchestration (orchestration vs choreography seçimi)
-- [ ] 0005 — JSON over Avro/Protobuf
-- [ ] 0006 — MassTransit seçimi
+> **Not (Faz 5, 5a):** Aşağıdaki liste ESKİ planlama numaralarıydı (stale). ADR'ler artık fazlar ilerledikçe
+> GERÇEK sırayla yazılıyor; bu Faz 7 maddesi yalnızca "hepsi yazıldı mı" denetimidir. Gerçek dosya sırası:
+
+- [x] 0001 — Migration-in-docker (Faz 1)
+- [x] 0002 — In-process domain event dispatch (Faz 2/3)
+- [x] 0003 — Hangfire storage + timeout reliability (Faz 2)
+- [x] 0004 — MassTransit / RabbitMQ (Faz 3)
+- [x] 0005 — Custom Inbox (Faz 3)
+- [x] 0006 — Kafka event streaming (Faz 4)
+- [x] 0007 — **Saga orchestration** (orchestration vs choreography seçimi) (Faz 5) — *eski listede yanlışlıkla "0004" yazıyordu*
+- [ ] Faz 7'de: README'ye ADR index linkleri + eksik kalan mimari kararların ADR'leri (gerekirse)
 
 ## 7.3 Postman / Bruno collection
 

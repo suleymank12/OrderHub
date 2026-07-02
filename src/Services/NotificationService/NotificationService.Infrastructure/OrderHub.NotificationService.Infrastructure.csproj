@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.NotificationService.Infrastructure</AssemblyName>
+    <RootNamespace>OrderHub.NotificationService.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <!-- NotificationDbContext / MockEmailSender / Scheduler internal (§9); trusted assembly'lere açılır. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.NotificationService.IntegrationTests" />
+    <InternalsVisibleTo Include="OrderHub.NotificationService.UnitTests" />
+    <!-- Api DI: HangfireCartAbandonmentScheduler'ı AddScoped generic arg olarak kayıt eder (InternalsVisibleTo gerekli). -->
+    <InternalsVisibleTo Include="OrderHub.NotificationService.Api" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NotificationService.Domain\OrderHub.NotificationService.Domain.csproj" />
+    <!-- Application'a ref: 5f-2'de IEmailSender / job abstraction'ı Infrastructure implement edecek (DIP). -->
+    <ProjectReference Include="..\NotificationService.Application\OrderHub.NotificationService.Application.csproj" />
+    <!-- Kafka consumer order-stream event'lerini (OrderStreamEvent + 4 order event) okur. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Contracts\OrderHub.Contracts.csproj" />
+    <!-- IKafkaEvent + KafkaMessageHeaders (type-header dispatch). EventBus, Confluent.Kafka'yı transitively getirir. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+    <!-- Consumer-side idempotency: InboxMessage entity + IInboxDbContext + InboxMessageConfiguration reuse. -->
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Inbox\OrderHub.Inbox.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- IHostedService (OrderEventsConsumer) + AddHostedService için. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <!-- Kafka consumer (IConsumer) doğrudan kullanım (EventBus transitive getirse de niyet açık). -->
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- Design: yalnız migration üretimi; downstream'e (Api) sızmasın. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- IBackgroundJobClient: HangfireCartAbandonmentScheduler (Hangfire hosting API'de kalır). -->
+    <PackageReference Include="Hangfire.Core" />
+    <!-- IOptions<CartAbandonmentOptions>: HangfireCartAbandonmentScheduler delay binding. -->
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+</Project>

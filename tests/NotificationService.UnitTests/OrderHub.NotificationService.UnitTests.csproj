@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.NotificationService.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.NotificationService.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- CartAbandonmentReminderJob (Application.Notifications, internal) + abstraction'ları. -->
+    <ProjectReference Include="..\..\src\Services\NotificationService\NotificationService.Application\OrderHub.NotificationService.Application.csproj" />
+    <!-- OrderProjection (Domain) — test verisi üretmek için Create/Mark* metodları. -->
+    <ProjectReference Include="..\..\src\Services\NotificationService\NotificationService.Domain\OrderHub.NotificationService.Domain.csproj" />
+    <!-- MockEmailSender (internal) + SentEmail (public). -->
+    <ProjectReference Include="..\..\src\Services\NotificationService\NotificationService.Infrastructure\OrderHub.NotificationService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- IsTestProject / Test.Sdk / xunit / runner / coverlet + Using Xunit/FluentAssertions
+       → tests/Directory.Build.props (ortak). Burada sadece projeye özel paketler. -->
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+    <PackageReference Include="FluentAssertions" />
+    <!-- NullLogger<T> için. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>
