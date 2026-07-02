@@ -85,6 +85,9 @@ public static class DependencyInjection
                 busConfigurator.AddConsumer<ConfirmOrderConsumer>();
                 busConfigurator.AddConsumer<MarkOrderPaidConsumer>();
                 busConfigurator.AddConsumer<ShipOrderConsumer>();
+                // Faz 5e-1 (compensation altyapısı): iptal komutu consumer'ı. ★ DORMANT — saga CancelOrder'ı
+                // 5e-2'de gönderecek; şimdilik kayıtlı ama tetiklenmiyor (additive/dormant, çalışan akış değişmez).
+                busConfigurator.AddConsumer<CancelOrderConsumer>();
             },
             (rabbit, context) => rabbit.UseConsumeFilter(typeof(InboxConsumeFilter<>), context));
 

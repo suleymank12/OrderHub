@@ -11,4 +11,7 @@ internal static class OrderCancellationReasons
 
     /// <summary>Sipariş, ödeme sağlayıcısı ödemeyi reddettiği için iptal edildi (PaymentFailed akışı).</summary>
     public const string PaymentFailed = "payment_failed";
+
+    /// <summary>Sipariş, stok ayrılamadığı için iptal edildi (saga StockReservationFailed telafisi, Faz 5e).</summary>
+    public const string StockUnavailable = "stock_unavailable";
 }

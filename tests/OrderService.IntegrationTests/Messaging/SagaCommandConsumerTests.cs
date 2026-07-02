@@ -140,6 +140,54 @@ public sealed class SagaCommandConsumerTests(SqlServerContainerFixture fixture)
         finally { await CleanupOrderAsync(orderId); }
     }
 
+    [Fact]
+    public async Task CancelOrderConsumer_PendingOrder_TransitionsToCancelled()
+    {
+        var orderId = await SeedOrderAsync(OrderLifecycle.Pending);
+        try
+        {
+            await using var provider = BuildProvider();
+            var harness = provider.GetRequiredService<ITestHarness>();
+            await harness.Start();
+            try
+            {
+                await harness.Bus.Publish(CancelOrder(orderId));
+                (await harness.Consumed.Any<CancelOrderIntegrationEvent>()).Should().BeTrue();
+
+                var consumed = harness.Consumed.Select<CancelOrderIntegrationEvent>().Single();
+                consumed.Exception.Should().BeNull("iptal forward telafi → ack (throw yok)");
+                (await LoadOrderAsync(orderId)).Status.Should().Be(OrderStatus.Cancelled);
+            }
+            finally { await harness.Stop(); }
+        }
+        finally { await CleanupOrderAsync(orderId); }
+    }
+
+    [Fact]
+    public async Task CancelOrderConsumer_PaidOrder_EdgeFailureAckedNoThrow_StaysPaid()
+    {
+        // ★ Edge: telafi Paid'e ULAŞMAZ (forward-only) ama consumer savunmacı: Paid → handler Conflict failure →
+        // consumer ack'ler (throw YOK; iptal retry gerektirmez). Order Paid kalır (iptal uygulanmaz).
+        var orderId = await SeedOrderAsync(OrderLifecycle.Paid);
+        try
+        {
+            await using var provider = BuildProvider();
+            var harness = provider.GetRequiredService<ITestHarness>();
+            await harness.Start();
+            try
+            {
+                await harness.Bus.Publish(CancelOrder(orderId));
+                (await harness.Consumed.Any<CancelOrderIntegrationEvent>()).Should().BeTrue();
+
+                var consumed = harness.Consumed.Select<CancelOrderIntegrationEvent>().Single();
+                consumed.Exception.Should().BeNull("Paid edge → Failure ack (retry yok, throw yok)");
+                (await LoadOrderAsync(orderId)).Status.Should().Be(OrderStatus.Paid, "iptal uygulanmadı");
+            }
+            finally { await harness.Stop(); }
+        }
+        finally { await CleanupOrderAsync(orderId); }
+    }
+
     private enum OrderLifecycle { Pending, Confirmed, Paid }
 
     private static ConfirmOrderIntegrationEvent ConfirmOrder(Guid orderId) =>
@@ -150,6 +198,9 @@ public sealed class SagaCommandConsumerTests(SqlServerContainerFixture fixture)
 
     private static ShipOrderIntegrationEvent ShipOrder(Guid orderId) =>
         new() { Id = Guid.NewGuid(), OccurredOnUtc = DateTime.UtcNow, OrderId = orderId };
+
+    private static CancelOrderIntegrationEvent CancelOrder(Guid orderId) =>
+        new() { Id = Guid.NewGuid(), OccurredOnUtc = DateTime.UtcNow, OrderId = orderId, Reason = "stock_unavailable" };
 
     private async Task<Guid> SeedOrderAsync(OrderLifecycle lifecycle)
     {
@@ -204,6 +255,7 @@ public sealed class SagaCommandConsumerTests(SqlServerContainerFixture fixture)
             busConfigurator.AddConsumer<ConfirmOrderConsumer>();
             busConfigurator.AddConsumer<MarkOrderPaidConsumer>();
             busConfigurator.AddConsumer<ShipOrderConsumer>();
+            busConfigurator.AddConsumer<CancelOrderConsumer>();
         });
 
         return services.BuildServiceProvider();

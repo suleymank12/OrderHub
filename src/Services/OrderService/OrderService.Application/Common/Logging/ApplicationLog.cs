@@ -92,4 +92,12 @@ internal static partial class ApplicationLog
     [LoggerMessage(EventId = 2015, Level = LogLevel.Debug,
         Message = "Ship skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
     public static partial void OrderShipSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
+
+    [LoggerMessage(EventId = 2016, Level = LogLevel.Information,
+        Message = "Order {OrderId} cancelled by saga compensation ({Reason})")]
+    public static partial void OrderCancelledByCommand(ILogger logger, Guid orderId, string reason);
+
+    [LoggerMessage(EventId = 2017, Level = LogLevel.Debug,
+        Message = "Cancel skipped for order {OrderId}; status is {CurrentStatus} (idempotent/edge no-op)")]
+    public static partial void OrderCancelSkipped(ILogger logger, Guid orderId, OrderStatus? currentStatus);
 }

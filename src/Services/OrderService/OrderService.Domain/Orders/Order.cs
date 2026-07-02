@@ -159,16 +159,23 @@ public sealed class Order : AggregateRoot<Guid>
     }
 
     /// <summary>
-    /// Siparişi iptal eder (yalnızca Pending/Confirmed) ve <see cref="OrderCancelled"/> yükseltir.
-    /// <paramref name="reason"/> boş → <see cref="ArgumentException"/>; iptal edilemez durumda
-    /// (Paid/Shipped/Cancelled) → <see cref="InvalidOrderStatusTransitionException"/>. Paid iptali
-    /// refund/compensation gerektirir → Faz 5 saga.
+    /// Siparişi iptal eder (Pending/Confirmed → Cancelled) ve <see cref="OrderCancelled"/> yükseltir.
+    /// <b>Idempotent</b>: zaten Cancelled ise no-op (throw etmez, yeni event yok — at-least-once saga-command
+    /// teslimatı + <see cref="MarkPaid"/>/<see cref="Ship"/> idempotency precedent'i). <paramref name="reason"/>
+    /// boş → <see cref="ArgumentException"/>; Paid/Shipped'ten iptal → <see cref="InvalidOrderStatusTransitionException"/>
+    /// (refund/compensation gerektirir, kapsam dışı — saga telafisi bu state'lere ulaşmaz: AwaitingStockConfirmation
+    /// forward-only).
     /// </summary>
     public void Cancel(string reason)
     {
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("Cancellation reason cannot be empty.", nameof(reason));
+        }
+
+        if (Status == OrderStatus.Cancelled)
+        {
+            return; // Idempotent no-op: aynı CancelOrder ikinci kez gelirse güvenli (yeni OrderCancelled yükselmez).
         }
 
         if (Status is not (OrderStatus.Pending or OrderStatus.Confirmed))
