@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage: Debian bookworm-slim (ICU içerir → SqlClient çalışır). Runtime patch'e pinli (8.0.11).
 # PaymentService/AnalyticsService Dockerfile pattern'iyle birebir. COPY listesi InventoryService'in GERÇEK
-# referanslarına göre (Faz 3/4 stale-Dockerfile dersi): Common + Domain + Infrastructure + Api.
-# Application YOK (5b'de deferred) → COPY'de yok. Outbox/Inbox/Contracts/EventBus 5c'de mesajlaşmayla gelir.
+# transitive kapanışına göre (Faz 3/4 stale-Dockerfile dersi): Api → Infrastructure → {Application, Domain,
+# Outbox, Inbox, EventBus, Contracts} → Common. 5c mesajlaşma (saga command consumer'ları + outbox writer)
+# Application'ı ve tüm building block'ları (Outbox/Inbox/EventBus/Contracts) ref eder → hepsi COPY listesinde.
 
 # ---------- build ----------
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
@@ -12,8 +13,21 @@ WORKDIR /src
 COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
 COPY ["src/BuildingBlocks/OrderHub.Common/OrderHub.Common.csproj", "src/BuildingBlocks/OrderHub.Common/"]
 COPY ["src/BuildingBlocks/OrderHub.Common/packages.lock.json", "src/BuildingBlocks/OrderHub.Common/"]
+# Faz 5c building blocks: Infrastructure bunlara referans verir (EventBus transport, Contracts sözleşmeleri,
+# Outbox writer, Inbox dedup) → locked-mode restore için şart. EventBus yaprak; Outbox→Common+EventBus, Inbox/Contracts→EventBus.
+COPY ["src/BuildingBlocks/OrderHub.EventBus/OrderHub.EventBus.csproj", "src/BuildingBlocks/OrderHub.EventBus/"]
+COPY ["src/BuildingBlocks/OrderHub.EventBus/packages.lock.json", "src/BuildingBlocks/OrderHub.EventBus/"]
+COPY ["src/BuildingBlocks/OrderHub.Contracts/OrderHub.Contracts.csproj", "src/BuildingBlocks/OrderHub.Contracts/"]
+COPY ["src/BuildingBlocks/OrderHub.Contracts/packages.lock.json", "src/BuildingBlocks/OrderHub.Contracts/"]
+COPY ["src/BuildingBlocks/OrderHub.Outbox/OrderHub.Outbox.csproj", "src/BuildingBlocks/OrderHub.Outbox/"]
+COPY ["src/BuildingBlocks/OrderHub.Outbox/packages.lock.json", "src/BuildingBlocks/OrderHub.Outbox/"]
+COPY ["src/BuildingBlocks/OrderHub.Inbox/OrderHub.Inbox.csproj", "src/BuildingBlocks/OrderHub.Inbox/"]
+COPY ["src/BuildingBlocks/OrderHub.Inbox/packages.lock.json", "src/BuildingBlocks/OrderHub.Inbox/"]
 COPY ["src/Services/InventoryService/InventoryService.Domain/OrderHub.InventoryService.Domain.csproj", "src/Services/InventoryService/InventoryService.Domain/"]
 COPY ["src/Services/InventoryService/InventoryService.Domain/packages.lock.json", "src/Services/InventoryService/InventoryService.Domain/"]
+# Application (5c'de eklendi: handler'lar + ExpireStockReservationsJob; Infrastructure ve Api ona ref verir).
+COPY ["src/Services/InventoryService/InventoryService.Application/OrderHub.InventoryService.Application.csproj", "src/Services/InventoryService/InventoryService.Application/"]
+COPY ["src/Services/InventoryService/InventoryService.Application/packages.lock.json", "src/Services/InventoryService/InventoryService.Application/"]
 COPY ["src/Services/InventoryService/InventoryService.Infrastructure/OrderHub.InventoryService.Infrastructure.csproj", "src/Services/InventoryService/InventoryService.Infrastructure/"]
 COPY ["src/Services/InventoryService/InventoryService.Infrastructure/packages.lock.json", "src/Services/InventoryService/InventoryService.Infrastructure/"]
 COPY ["src/Services/InventoryService/InventoryService.Api/OrderHub.InventoryService.Api.csproj", "src/Services/InventoryService/InventoryService.Api/"]
