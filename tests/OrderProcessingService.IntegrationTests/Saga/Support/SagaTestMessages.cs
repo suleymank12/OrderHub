@@ -50,4 +50,35 @@ internal static class SagaTestMessages
             OrderId = orderId,
             ProductId = productId,
         };
+
+    // --- Compensation cevap event'leri (5e-3) ---
+
+    public static StockReservationFailedIntegrationEvent StockReservationFailed(Guid orderId, Guid productId, string reason = "insufficient stock") =>
+        new()
+        {
+            Id = NewId.NextGuid(),
+            OccurredOnUtc = DateTime.UtcNow,
+            OrderId = orderId,
+            ProductId = productId,
+            Reason = reason,
+        };
+
+    public static PaymentFailedIntegrationEvent PaymentFailed(Guid orderId, string reason = "card declined") =>
+        new()
+        {
+            Id = NewId.NextGuid(),
+            OccurredOnUtc = DateTime.UtcNow,
+            OrderId = orderId,
+            Reason = reason,
+        };
+
+    public static StockReleasedIntegrationEvent StockReleased(Guid orderId, Guid productId) =>
+        new()
+        {
+            Id = NewId.NextGuid(),
+            OccurredOnUtc = DateTime.UtcNow,
+            OrderId = orderId,
+            ProductId = productId,
+            Quantity = 1,
+        };
 }
