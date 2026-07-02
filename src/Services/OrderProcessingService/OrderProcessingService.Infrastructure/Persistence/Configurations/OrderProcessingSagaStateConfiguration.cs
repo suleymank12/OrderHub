@@ -39,5 +39,12 @@ internal sealed class OrderProcessingSagaStateConfiguration : IEntityTypeConfigu
         builder.Property(state => state.AllProductIds).HasConversion(converter, comparer).IsRequired();
         builder.Property(state => state.ReservedProductIds).HasConversion(converter, comparer).IsRequired();
         builder.Property(state => state.ConfirmedProductIds).HasConversion(converter, comparer).IsRequired();
+
+        // Compensation (5e-2): hedef release seti (dondurulmuş) + serbest bırakılanlar → aynı JSON küme deseni.
+        builder.Property(state => state.ProductsToRelease).HasConversion(converter, comparer).IsRequired();
+        builder.Property(state => state.ReleasedProductIds).HasConversion(converter, comparer).IsRequired();
+
+        // İptal gerekçesi yalnız telafi dalında dolar → nullable (happy-path'te null).
+        builder.Property(state => state.CancellationReason).HasMaxLength(64);
     }
 }

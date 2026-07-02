@@ -6,23 +6,29 @@ using OrderHub.Contracts.Payments;
 namespace OrderHub.OrderProcessingService.Infrastructure.Saga;
 
 /// <summary>
-/// OrderProcessingSaga — sipariş işleme orkestrasyonu (ADR-0007 Karar 4), <b>happy path</b> (compensation 5e).
-/// Akış: OrderPlaced → N× ReserveStock → (hepsi reserved) ConfirmOrder + ProcessPayment → PaymentSucceeded →
-/// N× ConfirmStockReservation + MarkOrderPaid → (hepsi confirmed) ShipOrder → Completed.
+/// OrderProcessingSaga — sipariş işleme orkestrasyonu (ADR-0007 Karar 4/5). <b>Happy path</b> (5d-4b) +
+/// <b>compensation</b> (5e-2, mutsuz yol).
 /// <para>
-/// <b>Fan-out (Karar B):</b> sayım <see cref="OrderProcessingSagaState"/> ProductId <b>kümeleri</b> ile —
-/// guard "küme ⊇ AllProductIds" (<c>IsSupersetOf</c>). Küme <c>Add</c> idempotent olduğundan aynı StockReserved'ın
-/// yeniden teslimi (inbox yok, at-least-once) sayıyı bozmaz; ayrıca state ilerledikten sonra geç gelen fan-in
-/// olayları açıkça <c>Ignore</c> edilir → <b>çift-send YOK</b>. <b>Mesajlar Publish</b> edilir (ADR-0004
-/// tip-bazlı routing, her komutun tek tüketicisi → EndpointConvention'sız point-to-point). Eşzamanlı mesaj
-/// contention'ı RowVersion optimistic + retry ile (5d-4a wiring).
+/// <b>Happy:</b> OrderPlaced → N× ReserveStock → (hepsi reserved) ConfirmOrder + ProcessPayment → PaymentSucceeded →
+/// N× ConfirmStockReservation + MarkOrderPaid → (hepsi confirmed) ShipOrder → Completed.
 /// </para>
-/// <para><b>Karar D:</b> ConfirmOrder + ProcessPayment paralel gönderilir; <c>MarkOrderPaid</c> sipariş henüz
-/// Confirmed değilse OrderService consumer'ında retry'a güvenir (5d-5). <b>Compensation</b>
-/// (<c>StockReservationFailed</c>/<c>PaymentFailed</c>) bu adımda YOK → <b>5e</b>.</para>
+/// <para>
+/// <b>Compensation:</b> AwaitingStockReservation'da StockReservationFailed/Expired → o ana kadar başarılı rezervasyonları
+/// (<see cref="OrderProcessingSagaState.ReservedProductIds"/> snapshot'ı) release; AwaitingPayment'ta PaymentFailed →
+/// TÜM rezervasyonları (AllProductIds) release → <see cref="Compensating"/>'te StockReleased fan-in beklenir (küme
+/// guard, happy-path deseni) → tamamlanınca CancelOrder → <see cref="Cancelled"/>. Hiç rezervasyon yoksa release
+/// atlanır, doğrudan CancelOrder. AwaitingStockConfirmation <b>forward-only</b> (ödeme başarılı, order Paid → iptal
+/// edilemez/refund gerekir → kapsam dışı). Fan-out/fan-in ve iptal, küme + status-guard ile <b>idempotent</b>
+/// (redelivery çift-send üretmez); geç/straggler event'ler <c>Ignore</c> edilir (KN-2: geç-reserved yetim kalmaz →
+/// Inventory 15dk expiry backstop serbest bırakır). Eşzamanlı contention RowVersion optimistic + retry ile serileşir.
+/// </para>
 /// </summary>
 internal sealed class OrderProcessingSaga : MassTransitStateMachine<OrderProcessingSagaState>
 {
+    // OrderService.OrderCancellationReasons ile AYNI değerler (cross-service Contracts sabiti yok → burada mirror'lanır).
+    private const string StockUnavailableReason = "stock_unavailable";
+    private const string PaymentFailedReason = "payment_failed";
+
     public OrderProcessingSaga()
     {
         InstanceState(instance => instance.CurrentState);
@@ -32,6 +38,11 @@ internal sealed class OrderProcessingSaga : MassTransitStateMachine<OrderProcess
         Event(() => StockReserved, x => x.CorrelateById(context => context.Message.OrderId));
         Event(() => PaymentSucceeded, x => x.CorrelateById(context => context.Message.OrderId));
         Event(() => StockReservationConfirmed, x => x.CorrelateById(context => context.Message.OrderId));
+        // Compensation event'leri (5e-2).
+        Event(() => StockReservationFailed, x => x.CorrelateById(context => context.Message.OrderId));
+        Event(() => StockReservationExpired, x => x.CorrelateById(context => context.Message.OrderId));
+        Event(() => PaymentFailed, x => x.CorrelateById(context => context.Message.OrderId));
+        Event(() => StockReleased, x => x.CorrelateById(context => context.Message.OrderId));
 
         Initially(
             When(OrderPlaced)
@@ -44,14 +55,28 @@ internal sealed class OrderProcessingSaga : MassTransitStateMachine<OrderProcess
                 .Then(AddReservedProduct)
                 .If(AllStockReserved, binder => binder
                     .ThenAsync(ConfirmOrderAndProcessPayment)
-                    .TransitionTo(AwaitingPayment)));
+                    .TransitionTo(AwaitingPayment)),
+            // Stok ayrılamadı / rezervasyon zaman aşımı (KN-3: expired = failure) → başarılı olanları release et.
+            When(StockReservationFailed).Then(EnterStockCompensation).IfElse(NothingToRelease,
+                empty => empty.ThenAsync(SendCancelOrder).TransitionTo(Cancelled),
+                some => some.ThenAsync(SendReleases).TransitionTo(Compensating)),
+            When(StockReservationExpired).Then(EnterStockCompensation).IfElse(NothingToRelease,
+                empty => empty.ThenAsync(SendCancelOrder).TransitionTo(Cancelled),
+                some => some.ThenAsync(SendReleases).TransitionTo(Compensating)));
 
         During(AwaitingPayment,
             When(PaymentSucceeded)
                 .ThenAsync(ConfirmReservationsAndMarkPaid)
                 .TransitionTo(AwaitingStockConfirmation),
-            // Tüm rezervasyonlar geldi; geç/yeniden-teslim StockReserved → no-op (Karar B + state guard).
-            Ignore(StockReserved));
+            // Ödeme reddedildi → TÜM rezervasyonlar (AllProductIds, boş olamaz — order kalemli) release et.
+            When(PaymentFailed)
+                .Then(EnterPaymentCompensation)
+                .ThenAsync(SendReleases)
+                .TransitionTo(Compensating),
+            // Tüm rezervasyonlar geldi; geç/yeniden-teslim → no-op (Karar B + state guard).
+            Ignore(StockReserved),
+            Ignore(StockReservationFailed),
+            Ignore(StockReservationExpired));
 
         During(AwaitingStockConfirmation,
             When(StockReservationConfirmed)
@@ -59,8 +84,35 @@ internal sealed class OrderProcessingSaga : MassTransitStateMachine<OrderProcess
                 .If(AllStockConfirmed, binder => binder
                     .ThenAsync(SendShipOrder)
                     .TransitionTo(Completed)),
+            // Forward-only: ödeme başarılı (order Paid) → compensation YOK. Geç/yeniden-teslim event'ler no-op.
             Ignore(StockReserved),
-            Ignore(PaymentSucceeded));
+            Ignore(PaymentSucceeded),
+            Ignore(PaymentFailed),
+            Ignore(StockReservationFailed),
+            Ignore(StockReservationExpired));
+
+        During(Compensating,
+            When(StockReleased)
+                .Then(AddReleasedProduct)
+                .If(AllStockReleased, binder => binder
+                    .ThenAsync(SendCancelOrder)
+                    .TransitionTo(Cancelled)),
+            // Idempotency + straggler (KN-2): tekrar-tetikleyici ve geç happy event'ler no-op (çift release/cancel yok).
+            Ignore(StockReserved),
+            Ignore(StockReservationConfirmed),
+            Ignore(PaymentSucceeded),
+            Ignore(StockReservationFailed),
+            Ignore(StockReservationExpired),
+            Ignore(PaymentFailed));
+
+        During(Cancelled,
+            Ignore(StockReserved),
+            Ignore(StockReservationConfirmed),
+            Ignore(PaymentSucceeded),
+            Ignore(StockReleased),
+            Ignore(StockReservationFailed),
+            Ignore(StockReservationExpired),
+            Ignore(PaymentFailed));
 
         During(Completed,
             Ignore(StockReserved),
@@ -80,6 +132,12 @@ internal sealed class OrderProcessingSaga : MassTransitStateMachine<OrderProcess
     /// <summary>Sipariş kargolandı; saga tamamlandı (instance audit için saklanır — Finalize/silme YOK).</summary>
     public State Completed { get; private set; } = null!;
 
+    /// <summary>Telafi: rezervasyonlar serbest bırakılıyor; StockReleased fan-in beklenir (5e-2).</summary>
+    public State Compensating { get; private set; } = null!;
+
+    /// <summary>Sipariş iptal edildi (telafi tamamlandı); terminal — audit için saklanır (Completed deseni, Finalize YOK).</summary>
+    public State Cancelled { get; private set; } = null!;
+
     /// <summary>Saga tetik olayı (OrderService → saga): sipariş yerleşti.</summary>
     public Event<OrderPlacedIntegrationEvent> OrderPlaced { get; private set; } = null!;
 
@@ -91,6 +149,18 @@ internal sealed class OrderProcessingSaga : MassTransitStateMachine<OrderProcess
 
     /// <summary>InventoryService → saga: bir ürünün rezervasyonu onaylandı (fan-in).</summary>
     public Event<StockReservationConfirmedIntegrationEvent> StockReservationConfirmed { get; private set; } = null!;
+
+    /// <summary>InventoryService → saga: stok ayrılamadı (yetersiz stok) → compensation.</summary>
+    public Event<StockReservationFailedIntegrationEvent> StockReservationFailed { get; private set; } = null!;
+
+    /// <summary>InventoryService → saga: rezervasyon zaman aşımına uğradı (Hangfire) → compensation (KN-3).</summary>
+    public Event<StockReservationExpiredIntegrationEvent> StockReservationExpired { get; private set; } = null!;
+
+    /// <summary>PaymentService → saga: ödeme reddedildi → compensation.</summary>
+    public Event<PaymentFailedIntegrationEvent> PaymentFailed { get; private set; } = null!;
+
+    /// <summary>InventoryService → saga: rezervasyon serbest bırakıldı (compensation ack, fan-in).</summary>
+    public Event<StockReleasedIntegrationEvent> StockReleased { get; private set; } = null!;
 
     private static void StoreOrderDetails(BehaviorContext<OrderProcessingSagaState, OrderPlacedIntegrationEvent> context)
     {
@@ -179,5 +249,56 @@ internal sealed class OrderProcessingSaga : MassTransitStateMachine<OrderProcess
             Id = NewId.NextGuid(),
             OccurredOnUtc = DateTime.UtcNow,
             OrderId = context.Saga.CorrelationId,
+        });
+
+    // --- Compensation (5e-2) ---
+
+    // Hedef release setini DONDUR (snapshot): o ana kadar başarılı rezervasyonlar. Geç event'ler bunu değiştirmez.
+    private static void EnterStockCompensation<TEvent>(BehaviorContext<OrderProcessingSagaState, TEvent> context)
+        where TEvent : class
+    {
+        context.Saga.ProductsToRelease = [.. context.Saga.ReservedProductIds];
+        context.Saga.CancellationReason = StockUnavailableReason;
+    }
+
+    // Ödeme-fail: tüm rezervasyonlar başarılıydı → AllProductIds release edilir.
+    private static void EnterPaymentCompensation(BehaviorContext<OrderProcessingSagaState, PaymentFailedIntegrationEvent> context)
+    {
+        context.Saga.ProductsToRelease = [.. context.Saga.AllProductIds];
+        context.Saga.CancellationReason = PaymentFailedReason;
+    }
+
+    private static bool NothingToRelease<TEvent>(BehaviorContext<OrderProcessingSagaState, TEvent> context)
+        where TEvent : class => context.Saga.ProductsToRelease.Count == 0;
+
+    private static async Task SendReleases<TEvent>(BehaviorContext<OrderProcessingSagaState, TEvent> context)
+        where TEvent : class
+    {
+        foreach (var productId in context.Saga.ProductsToRelease)
+        {
+            await context.Publish(new ReleaseStockIntegrationEvent
+            {
+                Id = NewId.NextGuid(),
+                OccurredOnUtc = DateTime.UtcNow,
+                OrderId = context.Saga.CorrelationId,
+                ProductId = productId,
+            });
+        }
+    }
+
+    private static void AddReleasedProduct(BehaviorContext<OrderProcessingSagaState, StockReleasedIntegrationEvent> context) =>
+        context.Saga.ReleasedProductIds.Add(context.Message.ProductId);
+
+    private static bool AllStockReleased(BehaviorContext<OrderProcessingSagaState, StockReleasedIntegrationEvent> context) =>
+        context.Saga.ReleasedProductIds.IsSupersetOf(context.Saga.ProductsToRelease);
+
+    private static Task SendCancelOrder<TEvent>(BehaviorContext<OrderProcessingSagaState, TEvent> context)
+        where TEvent : class =>
+        context.Publish(new CancelOrderIntegrationEvent
+        {
+            Id = NewId.NextGuid(),
+            OccurredOnUtc = DateTime.UtcNow,
+            OrderId = context.Saga.CorrelationId,
+            Reason = context.Saga.CancellationReason!,
         });
 }

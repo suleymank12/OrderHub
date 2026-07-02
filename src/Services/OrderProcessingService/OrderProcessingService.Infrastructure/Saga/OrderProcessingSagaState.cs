@@ -45,4 +45,19 @@ internal sealed class OrderProcessingSagaState : SagaStateMachineInstance
 
     /// <summary>Rezervasyonu onaylanmış (<c>StockReservationConfirmed</c>) ürünler — küme tamamlanınca <c>ShipOrder</c>.</summary>
     public HashSet<Guid> ConfirmedProductIds { get; set; } = [];
+
+    // --- Compensation (5e-2, mutsuz yol) ---
+
+    /// <summary>
+    /// Telafi başında DONDURULAN hedef release seti: stok-fail'de o ana kadar <see cref="ReservedProductIds"/>
+    /// snapshot'ı, ödeme-fail'de <see cref="AllProductIds"/>. Fan-in guard'ının hedefidir — geç gelen event'ler
+    /// (örn. straggler StockReserved) bu hedefi DEĞİŞTİRMEZ → telafi deterministik biter (snapshot kararı).
+    /// </summary>
+    public HashSet<Guid> ProductsToRelease { get; set; } = [];
+
+    /// <summary>Serbest bırakılmış (<c>StockReleased</c>) ürünler — küme <see cref="ProductsToRelease"/>'i kapsayınca <c>CancelOrder</c>.</summary>
+    public HashSet<Guid> ReleasedProductIds { get; set; } = [];
+
+    /// <summary>İptal gerekçesi (<c>stock_unavailable</c>/<c>payment_failed</c>) — telafi girişinde saklanır, <c>CancelOrder</c>'a taşınır.</summary>
+    public string? CancellationReason { get; set; }
 }
