@@ -12,6 +12,16 @@
           "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
         }
       },
+      "AspNetCore.HealthChecks.UI.Client": {
+        "type": "Direct",
+        "requested": "[8.0.1, )",
+        "resolved": "8.0.1",
+        "contentHash": "nhC6KIoB/EtTbH3uGm2J6EHEUyTJuETUARFePbmrnA+zjbwsirzIVUQl46qIjvyPABhK0e7Rk+AxcRqC6zikqA==",
+        "dependencies": {
+          "AspNetCore.HealthChecks.UI.Core": "8.0.1",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
+        }
+      },
       "Serilog.AspNetCore": {
         "type": "Direct",
         "requested": "[8.0.3, )",
@@ -45,6 +55,15 @@
         "dependencies": {
           "Serilog": "4.0.0",
           "Serilog.Sinks.File": "5.0.0"
+        }
+      },
+      "AspNetCore.HealthChecks.UI.Core": {
+        "type": "Transitive",
+        "resolved": "8.0.1",
+        "contentHash": "Vn00MOJ1I0HSqyP7Bt9v0pr0AIgbrXMjL/KFwW+sRwLRogOtep8BWGimd8XYRCbCDLrAi7VSArU02f6pEIw69w==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
         }
       },
       "Azure.Core": {

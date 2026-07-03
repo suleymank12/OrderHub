@@ -23,6 +23,7 @@
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
     <!-- Hangfire hosting (server + SQL storage) Api'de: 15dk reservation expiry job'unu çalıştırır (ADR-0007 Karar 2).
          Dashboard YOK (YAGNI — JWT yok, UI gereksiz). Recurring kayıt Infrastructure'da (RecurringJobRegistrar). -->
     <PackageReference Include="Hangfire.AspNetCore" />

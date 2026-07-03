@@ -101,6 +101,15 @@
         "resolved": "2.8.2",
         "contentHash": "vm1tbfXhFmjFMUmS4M0J0ASXz3/U5XvXBa6DOQUL3fEz4Vt6YPhv+ESCarx6M6D+9kJkJYZKCNvJMas1+nVfmQ=="
       },
+      "AspNetCore.HealthChecks.UI.Core": {
+        "type": "Transitive",
+        "resolved": "8.0.1",
+        "contentHash": "Vn00MOJ1I0HSqyP7Bt9v0pr0AIgbrXMjL/KFwW+sRwLRogOtep8BWGimd8XYRCbCDLrAi7VSArU02f6pEIw69w==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
+        }
+      },
       "Azure.Core": {
         "type": "Transitive",
         "resolved": "1.35.0",
@@ -919,6 +928,7 @@
         "type": "Project",
         "dependencies": {
           "AspNetCore.HealthChecks.SqlServer": "[8.0.2, )",
+          "AspNetCore.HealthChecks.UI.Client": "[8.0.1, )",
           "Hangfire.AspNetCore": "[1.8.23, )",
           "Hangfire.SqlServer": "[1.8.23, )",
           "OrderHub.NotificationService.Application": "[1.0.0, )",
@@ -977,6 +987,16 @@
         "contentHash": "sTcVVq7/zhfUrSTs0WAktvPdpU1He/sj14gRTogq4eFhn0oImolxNNhJczkYMgFF92RMMW+O+rlcFO7HVOpfiQ==",
         "dependencies": {
           "Microsoft.Data.SqlClient": "5.2.0",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
+        }
+      },
+      "AspNetCore.HealthChecks.UI.Client": {
+        "type": "CentralTransitive",
+        "requested": "[8.0.1, )",
+        "resolved": "8.0.1",
+        "contentHash": "nhC6KIoB/EtTbH3uGm2J6EHEUyTJuETUARFePbmrnA+zjbwsirzIVUQl46qIjvyPABhK0e7Rk+AxcRqC6zikqA==",
+        "dependencies": {
+          "AspNetCore.HealthChecks.UI.Core": "8.0.1",
           "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.0"
         }
       },

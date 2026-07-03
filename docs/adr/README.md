@@ -25,6 +25,7 @@ hangi problem, hangi seçenekler, hangi kriterler, neden bu, hangi yeni sorunlar
 | #    | Başlık                                          | Durum    | Tarih      |
 |------|-------------------------------------------------|----------|------------|
 | [0001](0001-migration-in-docker.md) | Docker'da veritabanı migration stratejisi | Accepted | 2026-06-01 |
+| [0008](0008-gateway-edge-and-observability.md) | Gateway edge + distributed observability (Faz 6) | Accepted | 2026-07-03 |
 
 ## İlgili
 

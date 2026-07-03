@@ -95,6 +95,10 @@
     <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.SqlServer" Version="8.0.2" />
+    <!-- 6d: downstream /health/ready UI-JSON writer (UIResponseWriter) → gateway HealthChecks.UI dashboard poll'ü
+         parse edebilsin (plain "Healthy" → JSON parse-fail'di, dashboard hepsini Unhealthy gösteriyordu). Hafif paket
+         (UI.Core + Diagnostics.HealthChecks; KubernetesClient YOK) → root'ta güvenli (throwaway: EF 8.0.11, 9.x yok). -->
+    <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="8.0.1" />
     <!-- Serilog core (ILogEventEnricher/LogEvent) — Observability building block'un TraceContextEnricher'ı için
          explicit pin (sink'lerden transitive gelen 4.0.0 ile aynı hat). -->
     <PackageVersion Include="Serilog" Version="4.0.0" />

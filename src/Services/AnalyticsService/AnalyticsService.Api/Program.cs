@@ -1,4 +1,5 @@
 using System.Globalization;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OrderHub.AnalyticsService.Api.Extensions;
 using OrderHub.AnalyticsService.Application;
@@ -56,7 +57,7 @@ try
 
     // Liveness: app ayakta mı (dependency check'i YOK). Readiness: "ready" tag'li check'ler (DB).
     app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready"), ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
 
     // Read-only analytics endpoint'leri (AnalyticsController): GET orders/{id}, GET revenue/daily.
     app.MapControllers();
