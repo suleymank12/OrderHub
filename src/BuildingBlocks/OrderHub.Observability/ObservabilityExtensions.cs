@@ -17,6 +17,9 @@ public static class ObservabilityExtensions
 {
     private const string OtlpEndpointKey = "Otlp:Endpoint";
     private const string MassTransitActivitySource = "MassTransit";
+    // OrderHub.EventBus.Kafka.KafkaDiagnostics.ActivitySourceName ile AYNI olmalı (Observability, katman kuralı
+    // gereği EventBus'a ProjectRef ALMAZ → string literal; EventBus adı değişirse burası da güncellenir).
+    private const string KafkaActivitySource = "OrderHub.EventBus.Kafka";
 
     public static IServiceCollection AddObservability(
         this IServiceCollection services,
@@ -36,8 +39,9 @@ public static class ObservabilityExtensions
             .WithTracing(tracing =>
             {
                 tracing
-                    .AddSource(serviceName)                 // servisin kendi custom span'leri (6c-2 Kafka producer)
+                    .AddSource(serviceName)                 // servisin kendi custom span'leri
                     .AddSource(MassTransitActivitySource)   // MassTransit native → RabbitMQ hop otomatik trace
+                    .AddSource(KafkaActivitySource)         // ★ 6c-2: Kafka produce/consume span'leri (manuel W3C propagation)
                     .AddAspNetCoreInstrumentation()         // gelen HTTP (server span)
                     .AddHttpClientInstrumentation()         // giden HTTP (client span + traceparent inject)
                     .AddSqlClientInstrumentation();         // DB span (EF Core → SqlClient; STABLE, EF beta değil)

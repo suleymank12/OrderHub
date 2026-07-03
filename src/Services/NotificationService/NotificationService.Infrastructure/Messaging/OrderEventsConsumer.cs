@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
@@ -122,6 +123,12 @@ internal sealed class OrderEventsConsumer(
 
     private async Task HandleAsync(ConsumeResult<string, string> result, CancellationToken cancellationToken)
     {
+        // 6c-2: producer'ın inject ettiği W3C traceparent'ı çöz → consume span'ini o trace'e parent'la (Kafka hop
+        // trace'i korur; aksi halde yeni root = yarım-trace). İşleme (DB SqlClient span'leri) bu scope altına düşer.
+        var parentContext = KafkaTraceContextPropagation.Extract(result.Message.Headers);
+        using var activity = KafkaDiagnostics.ActivitySource.StartActivity(
+            $"{result.Topic} consume", ActivityKind.Consumer, parentContext);
+
         if (!result.Message.Headers.TryGetLastBytes(KafkaMessageHeaders.MessageType, out var typeBytes))
         {
             OrderEventsLog.MissingTypeHeader(logger, result.TopicPartitionOffset.ToString());

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.EventBus.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.EventBus.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.EventBus\OrderHub.EventBus.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. Projeye özel: gerçek Kafka + in-memory OTel exporter. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Confluent.Kafka" />
+    <PackageReference Include="Testcontainers.Kafka" />
+    <!-- Sdk.CreateTracerProviderBuilder (OpenTelemetry) + AddInMemoryExporter (ayrı paket) — test-only span toplama. -->
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Exporter.InMemory" />
+  </ItemGroup>
+
+</Project>

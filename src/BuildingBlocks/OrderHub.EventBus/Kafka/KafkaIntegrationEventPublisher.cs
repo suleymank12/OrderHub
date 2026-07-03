@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
@@ -37,6 +38,13 @@ internal sealed class KafkaIntegrationEventPublisher(IProducer<string, string> p
                 { KafkaMessageHeaders.MessageType, Encoding.UTF8.GetBytes(integrationEvent.GetType().FullName!) },
             },
         };
+
+        // 6c-2: producer span (ActivityKind.Producer) + mevcut trace context'i (span varsa o, yoksa ambient) mesaj
+        // header'ına W3C traceparent olarak inject → consumer bu trace'e bağlanır (RabbitMQ MassTransit ile otomatik;
+        // Kafka custom olduğundan manuel). Span dinlenmiyorsa (exporter yok) inject ambient context'i kullanır.
+        using var activity = KafkaDiagnostics.ActivitySource.StartActivity(
+            $"{kafkaEvent.Topic} publish", ActivityKind.Producer);
+        KafkaTraceContextPropagation.Inject(Activity.Current?.Context ?? default, message.Headers);
 
         await producer.ProduceAsync(kafkaEvent.Topic, message, cancellationToken);
     }
