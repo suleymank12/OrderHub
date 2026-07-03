@@ -1,0 +1,54 @@
+<Project>
+
+  <!-- ============================================================================================
+       ★ GATEWAY-TEST-SCOPED Central Package Management (Faz 6 6a-2)
+
+       NEDEN: Bu test projesi gateway'i ProjectReference ile host'lar (WebApplicationFactory) →
+       HealthChecks.UI 8.0.1 grafiğini TRANSITIVE çeker. Bu grafik, root'un 40-pin'lik merkezi setiyle
+       birleşince NuGet resolver'ını bozuyor (TÜM top-level paket alt-sınırını kaybeder, NU1604, en eski
+       sürüme çöker — Yarp→1.0.0 GÜVENLİK AÇIKLI). Gateway ile AYNI tedavi: en yakın Directory.Packages.props
+       burada → root'un büyük seti devre dışı → resolver düzgün çözer. CPM KORUNUR (§1.1, hiyerarşik).
+       (Detaylı kök-neden: src/Gateway/OrderHub.Gateway/Directory.Packages.props başındaki not.)
+
+       ★ GÜVENLİK-BAKIM RİSKİ (bilinçli, iki-yerde-güncelleme): Root ile ORTAK test paketleri (xunit,
+       Test.Sdk, coverlet, FluentAssertions, Mvc.Testing, WireMock) burada da pinlenir. Root'ta bir
+       güncelleme (CVE/sürüm) yapıldığında BU DOSYA da gözden geçirilmeli — sürümler root ile AYNI kalmalı.
+       Şu an birebir aynı (aşağıdaki yorumlarda root karşılığı). Yalnız gateway (saf-edge izole) + test'i bu
+       deseni kullanır; başka test projesi KOPYALAMAMALI.
+
+       NOT: tests/Directory.Build.props ortak test paketlerini (Test.Sdk/xunit/xunit.runner/coverlet)
+       PackageReference olarak EKLER → onların sürümleri de bu scoped dosyada pinlenmeli (CPM: her
+       reference'ın PackageVersion'ı olmalı). Directory.Build.props ZİNCİRİ etkilenmez (o ayrı mekanizma).
+       ============================================================================================ -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Ortak test altyapısı (tests/Directory.Build.props ekler) — root ile AYNI sürüm">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+  </ItemGroup>
+
+  <ItemGroup Label="Projeye özel (gateway test) — root ile AYNI sürüm">
+    <PackageVersion Include="FluentAssertions" Version="7.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageVersion Include="WireMock.Net" Version="1.6.7" />
+  </ItemGroup>
+
+  <ItemGroup Label="Transitive diamond çözümü (test-only)">
+    <!-- Gerçek diamond: WireMock.Net → ProtoBufJsonConverter → Microsoft.CodeAnalysis.CSharp 4.8.0
+         ↔ HealthChecks.UI → EF Core Design → CodeAnalysis.CSharp.Workspaces 4.5.0. Roslyn paketleri sürüm-kilitli
+         (Workspaces 4.5.0 → Common/CSharp = 4.5.0 tam) → tüm Roslyn alt-kümesini üst sürüm 4.8.0'da birleştir
+         (4.x geriye uyumlu; EF Design yalnız design-time, test runtime'ında yüklenmez). Test-only transitive;
+         runtime davranışını etkilemez. Root'ta bu paketler PİN'Lİ DEĞİL (yalnız bu test'in WireMock+HC.UI diamond'ı). -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+  </ItemGroup>
+
+</Project>

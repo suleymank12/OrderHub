@@ -295,6 +295,14 @@ services:
         condition: service_started
       analyticsservice:
         condition: service_started
+      # ★ 6a-2 health dashboard: route edilmeyen servisler de /health/ready poll edilir (operasyonel görünürlük).
+      # service_started yeterli — HealthChecks.UI poll'ü retry'lı (servis geç hazır olursa panoda kırmızı→yeşil geçer).
+      inventoryservice:
+        condition: service_started
+      orderprocessingservice:
+        condition: service_started
+      notificationservice:
+        condition: service_started
       seq:
         condition: service_started
     # restart YOK: startup hatası (eksik secret / config) görünür kalsın.

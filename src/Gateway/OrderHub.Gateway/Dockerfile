@@ -8,6 +8,9 @@ WORKDIR /src
 
 COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
 COPY ["src/Gateway/OrderHub.Gateway/OrderHub.Gateway.csproj", "src/Gateway/OrderHub.Gateway/"]
+# ★ Gateway-scoped Directory.Packages.props (6a-2): NuGet EN YAKIN props'u kullanır → bu dosya olmadan container
+#   root'un 40-pin setine düşer (Yarp 1.0.0 çöküşü / --locked-mode uyuşmazlığı). Lock ile birlikte kopyalanmalı.
+COPY ["src/Gateway/OrderHub.Gateway/Directory.Packages.props", "src/Gateway/OrderHub.Gateway/"]
 COPY ["src/Gateway/OrderHub.Gateway/packages.lock.json", "src/Gateway/OrderHub.Gateway/"]
 
 # --locked-mode: lock dosyasına birebir uyum (reproducible; sürpriz transitive sürüm yok).

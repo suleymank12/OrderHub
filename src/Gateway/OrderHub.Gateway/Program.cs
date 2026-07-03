@@ -29,6 +29,9 @@ try
 
     builder.Services.AddHealthChecks(); // gateway liveness (stateless → downstream dependency check'i YOK).
 
+    // ★ Merkezi sağlık panosu (§6.4): 6 servisin /health/ready'sini poll eden HealthChecks.UI dashboard.
+    builder.Services.AddGatewayHealthChecksUi();
+
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
@@ -41,6 +44,10 @@ try
 
     // Liveness: gateway ayakta mı (downstream'e bakmaz → downstream blip'i gateway'i unhealthy yapmasın).
     app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+
+    // ★ Sağlık panosu: /health-ui (UI) + /health-ui-api (poll sonuçları JSON). Ops aracı — /health/live gibi
+    // bilinçli anonim (K3 istisnası: sağlık gözlemi; prod'da network/ops seviyesinde kısıtlanır, edge JWT değil).
+    app.MapGatewayHealthChecksUi();
 
     // Tüm /api/* trafiği YARP ile downstream'e; route AuthorizationPolicy'si (default=auth / anonymous=dev-token) enforce edilir.
     app.MapReverseProxy();
