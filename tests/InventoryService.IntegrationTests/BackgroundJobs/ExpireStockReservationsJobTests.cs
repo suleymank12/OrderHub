@@ -45,8 +45,10 @@ public sealed class ExpireStockReservationsJobTests(InventorySqlServerContainerF
         stockItem.AvailableQuantity.Should().Be(initialQuantity,
             "expiry returns the reserved quantity (3) to the available pool");
 
+        // Order-scoped (payload = orderId): paylaşılan DB'de kardeş testin satırında yanlış-pozitif olmasın
+        // (senkron job → flaky değil; scope tutarlılık + doğruluk için, sibling satır 89 deseniyle aynı).
         var hasRow = await ctx.OutboxMessages.AsNoTracking()
-            .AnyAsync(m => m.Type.Contains("StockReservationExpiredIntegrationEvent"));
+            .AnyAsync(m => m.Type.Contains("StockReservationExpiredIntegrationEvent") && m.Payload.Contains(orderId.ToString()));
         hasRow.Should().BeTrue("job commits expiry event atomically via transactional outbox");
     }
 
