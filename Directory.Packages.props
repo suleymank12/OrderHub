@@ -95,6 +95,22 @@
     <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.SqlServer" Version="8.0.2" />
+    <!-- Serilog core (ILogEventEnricher/LogEvent) — Observability building block'un TraceContextEnricher'ı için
+         explicit pin (sink'lerden transitive gelen 4.0.0 ile aynı hat). -->
+    <PackageVersion Include="Serilog" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Observability (Faz 6 6c — OpenTelemetry tracing)">
+    <!-- ★ 1.15.x STABLE, net8. throwaway + locked-mode ile doğrulandı: root'ta ağır footprint (EF Core SqlServer +
+         MassTransit + Kafka) ile birlikte EF Core 8.0.11 LTS kilidi KORUNUR, Microsoft.Extensions 8.x, sıfır 9.x/10.x
+         (HealthChecks.UI'nin AKSİNE OTel iyi davranıyor → root'a güvenli, scoped'a kaçmaya gerek yok).
+         ★ DB span: Instrumentation.SqlClient (STABLE) — EF Core instrumentation beta-only olduğundan KULLANILMADI
+         (K2); EF zaten SqlClient üzerinden gider → gerçek SQL span, EF Core'a bağımlılık yok. -->
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
   </ItemGroup>
 
   <ItemGroup Label="Gateway (YARP reverse proxy)">

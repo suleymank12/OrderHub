@@ -13,6 +13,7 @@
   <ItemGroup>
     <!-- Saga host: yalnız Infrastructure (DbContext + MassTransit saga + RabbitMQ). Application/Domain katmanı yok. -->
     <ProjectReference Include="..\OrderProcessingService.Infrastructure\OrderHub.OrderProcessingService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Observability\OrderHub.Observability.csproj" />
   </ItemGroup>
 
   <!-- JWT/Swashbuckle YOK: HTTP endpoint yok (saga RabbitMQ ile orkestre eder, command-driven). Hangfire YOK

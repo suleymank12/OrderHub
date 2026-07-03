@@ -14,6 +14,7 @@
     <!-- 5c: Application (handler'lar + ExpireStockReservationsJob) + Infrastructure (DbContext + consumer'lar + outbox). -->
     <ProjectReference Include="..\InventoryService.Application\OrderHub.InventoryService.Application.csproj" />
     <ProjectReference Include="..\InventoryService.Infrastructure\OrderHub.InventoryService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Observability\OrderHub.Observability.csproj" />
   </ItemGroup>
 
   <!-- JWT/Swashbuckle YOK: HTTP endpoint yok (command-driven, saga RabbitMQ ile). -->

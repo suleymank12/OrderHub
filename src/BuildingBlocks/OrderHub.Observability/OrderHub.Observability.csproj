@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Faz 6 6c — OpenTelemetry distributed tracing building block. Saf altyapı (EventBus/Outbox gibi):
+       Contracts/domain'e bağımlı DEĞİL. 6 servis ProjectReference alır (gateway pure-edge → local wiring). -->
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <!-- TraceContextEnricher (Activity.Current → log property) için Serilog core. -->
+    <PackageReference Include="Serilog" />
+    <!-- AddObservability(IServiceCollection, IConfiguration) imzası için abstraction-only paketler. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.Observability.UnitTests" />
+  </ItemGroup>
+
+</Project>

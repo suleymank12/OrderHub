@@ -5,6 +5,7 @@ using OrderHub.PaymentService.Application;
 using OrderHub.PaymentService.Application.Payments.Configuration;
 using OrderHub.PaymentService.Infrastructure;
 using OrderHub.PaymentService.Infrastructure.Persistence;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger DI/startup hatalarını da yakalar.
@@ -34,6 +35,8 @@ try
         .ValidateOnStart();
 
     builder.Services.AddControllers();
+
+    builder.Services.AddObservability("paymentservice", builder.Configuration);
 
     var app = builder.Build();
 

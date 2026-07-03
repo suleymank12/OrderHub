@@ -36,6 +36,9 @@ try
     // ★ Merkezi sağlık panosu (§6.4): 6 servisin /health/ready'sini poll eden HealthChecks.UI dashboard.
     builder.Services.AddGatewayHealthChecksUi();
 
+    // ★ Distributed tracing (§6.3): edge span + downstream'e W3C traceparent otomatik inject + trace-id log enrichment.
+    builder.Services.AddGatewayObservability(builder.Configuration);
+
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();

@@ -115,6 +115,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.Gateway", "src\Gat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.Gateway.IntegrationTests", "tests\Gateway.IntegrationTests\OrderHub.Gateway.IntegrationTests.csproj", "{AEACC97F-B432-4169-9B1B-145EE67C83FA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.Observability", "src\BuildingBlocks\OrderHub.Observability\OrderHub.Observability.csproj", "{60C9C247-7B08-466A-AAC6-BE2D8697F4ED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderHub.Observability.UnitTests", "tests\OrderHub.Observability.UnitTests\OrderHub.Observability.UnitTests.csproj", "{0CAB4A81-1018-4684-B246-22C5045793D4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -300,6 +304,14 @@ Global
 		{AEACC97F-B432-4169-9B1B-145EE67C83FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AEACC97F-B432-4169-9B1B-145EE67C83FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AEACC97F-B432-4169-9B1B-145EE67C83FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60C9C247-7B08-466A-AAC6-BE2D8697F4ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60C9C247-7B08-466A-AAC6-BE2D8697F4ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60C9C247-7B08-466A-AAC6-BE2D8697F4ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60C9C247-7B08-466A-AAC6-BE2D8697F4ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CAB4A81-1018-4684-B246-22C5045793D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CAB4A81-1018-4684-B246-22C5045793D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CAB4A81-1018-4684-B246-22C5045793D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CAB4A81-1018-4684-B246-22C5045793D4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A326A5EC-9671-4D6D-8B8B-503E6D146E7A} = {81B9C654-3B5F-4587-B481-8B3379AF0617}
@@ -355,5 +367,7 @@ Global
 		{D2BB05E2-57B1-43EE-9681-1B6265EDD1E9} = {81B9C654-3B5F-4587-B481-8B3379AF0617}
 		{F4A072E8-3755-41F3-8402-DC03D18144F4} = {D2BB05E2-57B1-43EE-9681-1B6265EDD1E9}
 		{AEACC97F-B432-4169-9B1B-145EE67C83FA} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
+		{60C9C247-7B08-466A-AAC6-BE2D8697F4ED} = {A326A5EC-9671-4D6D-8B8B-503E6D146E7A}
+		{0CAB4A81-1018-4684-B246-22C5045793D4} = {025641F3-C2E7-43A5-8D1F-574DC19798AB}
 	EndGlobalSection
 EndGlobal

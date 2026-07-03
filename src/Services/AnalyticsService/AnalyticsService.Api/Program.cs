@@ -4,6 +4,7 @@ using OrderHub.AnalyticsService.Api.Extensions;
 using OrderHub.AnalyticsService.Application;
 using OrderHub.AnalyticsService.Infrastructure;
 using OrderHub.AnalyticsService.Infrastructure.Persistence;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger DI/startup hatalarını da yakalar.
@@ -27,6 +28,8 @@ try
         .AddSwaggerWithJwt();
 
     builder.Services.AddControllers();
+
+    builder.Services.AddObservability("analyticsservice", builder.Configuration);
 
     var app = builder.Build();
 

@@ -5,6 +5,7 @@ using OrderHub.NotificationService.Api.Extensions;
 using OrderHub.NotificationService.Application;
 using OrderHub.NotificationService.Infrastructure;
 using OrderHub.NotificationService.Infrastructure.Persistence;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger DI/startup hatalarını da yakalar.
@@ -27,6 +28,8 @@ try
         .AddInfrastructure(builder.Configuration)
         .AddHangfireServices(builder.Configuration, builder.Environment)
         .AddApiServices(builder.Configuration);
+
+    builder.Services.AddObservability("notificationservice", builder.Configuration);
 
     var app = builder.Build();
 

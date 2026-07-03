@@ -8,6 +8,7 @@ using OrderHub.OrderService.Application.Orders.Configuration;
 using OrderHub.OrderService.Application;
 using OrderHub.OrderService.Infrastructure;
 using OrderHub.OrderService.Infrastructure.Persistence;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger configuration okunmadan önceki (DI/startup) hatalarını da yakalar.
@@ -39,6 +40,8 @@ try
         .ValidateOnStart();
 
     builder.Services.AddControllers();
+
+    builder.Services.AddObservability("orderservice", builder.Configuration);
 
     var app = builder.Build();
 

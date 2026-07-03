@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OrderHub.OrderProcessingService.Api.Extensions;
 using OrderHub.OrderProcessingService.Infrastructure;
 using OrderHub.OrderProcessingService.Infrastructure.Persistence;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger DI/startup hatalarını da yakalar.
@@ -23,6 +24,8 @@ try
     builder.Services
         .AddInfrastructure(builder.Configuration)
         .AddApiServices(builder.Configuration);
+
+    builder.Services.AddObservability("orderprocessingservice", builder.Configuration);
 
     var app = builder.Build();
 

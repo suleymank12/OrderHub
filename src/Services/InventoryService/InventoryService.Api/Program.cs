@@ -5,6 +5,7 @@ using OrderHub.InventoryService.Application;
 using OrderHub.InventoryService.Infrastructure;
 using OrderHub.InventoryService.Infrastructure.Persistence;
 using OrderHub.InventoryService.Api.BackgroundJobs;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger DI/startup hatalarını da yakalar.
@@ -27,6 +28,8 @@ try
         .AddInfrastructure(builder.Configuration)
         .AddHangfireServices(builder.Configuration, builder.Environment)
         .AddApiServices(builder.Configuration);
+
+    builder.Services.AddObservability("inventoryservice", builder.Configuration);
 
     var app = builder.Build();
 
