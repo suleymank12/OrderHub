@@ -2,6 +2,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Registry;
+using Polly.Retry;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace OrderHub.Gateway.Resilience;
@@ -19,6 +20,14 @@ namespace OrderHub.Gateway.Resilience;
 /// </summary>
 internal sealed class ResilientForwarderHttpClientFactory : ForwarderHttpClientFactory, IDisposable
 {
+    /// <summary>Retry stratejisinin isteğin HTTP metodunu okuduğu context anahtarı (handler set eder).</summary>
+    internal static readonly ResiliencePropertyKey<HttpMethod> RequestMethodKey = new("gateway.request.method");
+
+    // ★ ALLOWLIST (denylist DEĞİL): YALNIZ bu güvenli/idempotent metodlar retry edilir. POST/PUT/PATCH/DELETE ve
+    // BİLİNMEYEN her method retry EDİLMEZ (güvenlik varsayılanı KAPALI) → yeni method eklenirse otomatik güvenli.
+    private static readonly HashSet<string> IdempotentMethods =
+        new(StringComparer.OrdinalIgnoreCase) { "GET", "HEAD", "OPTIONS" };
+
     private readonly GatewayResilienceOptions _options;
     private readonly ResiliencePipelineRegistry<string> _registry = new();
 
@@ -42,7 +51,8 @@ internal sealed class ResilientForwarderHttpClientFactory : ForwarderHttpClientF
         ResiliencePipelineBuilder<HttpResponseMessage> builder,
         GatewayResilienceOptions options)
     {
-        // Sıra (dış→iç): TotalTimeout → CircuitBreaker → AttemptTimeout. RETRY YOK (6b-1); 6b-2 retry CB↔AttemptTimeout'a girer.
+        // Sıra (dış→iç): TotalTimeout → CircuitBreaker → RETRY → AttemptTimeout. Retry her denemeye AttemptTimeout
+        // uygular; CB retry'ın NİHAİ sonucunu görür (retry'ın kurtardığı geçici blip CB'yi tetiklemez).
         builder
             .AddTimeout(TimeSpan.FromSeconds(options.TotalTimeoutSeconds))
             .AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
@@ -53,7 +63,34 @@ internal sealed class ResilientForwarderHttpClientFactory : ForwarderHttpClientF
                 SamplingDuration = TimeSpan.FromSeconds(options.CircuitBreaker.SamplingDurationSeconds),
                 BreakDuration = TimeSpan.FromSeconds(options.CircuitBreaker.BreakDurationSeconds),
             })
+            .AddRetry(new HttpRetryStrategyOptions
+            {
+                MaxRetryAttempts = options.RetryAttempts,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true, // DecorrelatedJitter → eşzamanlı retry storm'unu dağıtır
+                Delay = TimeSpan.FromMilliseconds(options.RetryBaseDelayMs),
+                // ★ İKİ koşul: (1) method allowlist'te (idempotent) VE (2) outcome transient. İkisi de sağlanmazsa retry YOK.
+                ShouldHandle = ShouldRetry,
+            })
             .AddTimeout(TimeSpan.FromSeconds(options.AttemptTimeoutSeconds));
+    }
+
+    /// <summary>
+    /// ★ Retry karar fonksiyonu — çift-order güvenliğinin 1. katmanı. Method allowlist'te DEĞİLSE (POST/PUT/PATCH/
+    /// DELETE/bilinmeyen) transient olsa bile retry EDİLMEZ. Allowlist içiyse yalnız transient (5xx/408/HttpRequestException)
+    /// retry edilir (4xx client hatası retry edilmez).
+    /// </summary>
+    private static ValueTask<bool> ShouldRetry(RetryPredicateArguments<HttpResponseMessage> args)
+    {
+        if (!args.Context.Properties.TryGetValue(RequestMethodKey, out var method)
+            || !IdempotentMethods.Contains(method.Method))
+        {
+            return PredicateResult.False(); // allowlist dışı → ASLA retry (güvenli varsayılan)
+        }
+
+        return HttpClientResiliencePredicates.IsTransient(args.Outcome)
+            ? PredicateResult.True()
+            : PredicateResult.False();
     }
 
     public void Dispose() => _registry.Dispose();
@@ -75,7 +112,19 @@ internal sealed class ResiliencePipelineDelegatingHandler : DelegatingHandler
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
-        => await _pipeline.ExecuteAsync(
-            async token => await base.SendAsync(request, token).ConfigureAwait(false),
-            cancellationToken).ConfigureAwait(false);
+    {
+        // Retry allowlist'inin okuyabilmesi için isteğin metodunu context'e koy (exception outcome'da response yoktur).
+        var context = ResilienceContextPool.Shared.Get(cancellationToken);
+        context.Properties.Set(ResilientForwarderHttpClientFactory.RequestMethodKey, request.Method);
+        try
+        {
+            return await _pipeline.ExecuteAsync(
+                async ctx => await base.SendAsync(request, ctx.CancellationToken).ConfigureAwait(false),
+                context).ConfigureAwait(false);
+        }
+        finally
+        {
+            ResilienceContextPool.Shared.Return(context);
+        }
+    }
 }

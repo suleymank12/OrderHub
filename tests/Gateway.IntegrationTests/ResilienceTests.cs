@@ -78,10 +78,57 @@ public sealed class ResilienceTests(ResilienceAppFixture app)
         app.StubSlow(cluster, TimeSpan.FromSeconds(ResilienceAppFixture.AttemptTimeoutSeconds + 3));
         var client = app.CreateClient();
 
-        var response = await client.GetAsync($"/{cluster}/z");
+        // ★ POST kullanılıyor: timeout'u SAF ölçmek için (POST idempotent değil → retry yok → tek attempt; GET olsaydı
+        // timeout retry edilip 3× sürerdi). Timeout tüm metodlara uygulanır; burada retry'dan izole test edilir.
+        var response = await client.PostAsync($"/{cluster}/z", content: null);
 
-        // Tek yavaş çağrı = 1 fail (CB açılmaz, throughput<min) → saf timeout kanıtı: 200 DEĞİL, bounded hata.
         response.StatusCode.Should().NotBe(HttpStatusCode.OK, "AttemptTimeout gecikmeli 200'ü kesmeli");
         ((int)response.StatusCode).Should().BeGreaterThanOrEqualTo(500, "timeout bounded bir sunucu hatası döndürmeli");
+    }
+
+    [Fact]
+    public async Task Retry_IdempotentGet_RecoversAfterTransientFailures()
+    {
+        const string cluster = "res-e";
+        app.StubFailThenSucceed(cluster, failTimes: ResilienceAppFixture.RetryAttempts); // ilk 2 çağrı 500, 3. çağrı 200
+        var client = app.CreateClient();
+
+        var response = await client.GetAsync($"/{cluster}/x");
+
+        // ★ GET idempotent (allowlist) + 500 transient → retry devrede: 2 retry sonrası 3. denemede 200.
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "idempotent GET transient fail'lerden sonra retry ile kurtarmalı");
+        app.DownstreamHits(cluster).Should().Be(ResilienceAppFixture.RetryAttempts + 1,
+            "downstream tam (1 + RetryAttempts) kez çağrılmalı (retry kanıtı)");
+    }
+
+    [Fact]
+    public async Task Retry_Post_IsNeverRetried_NoDoubleProcessing()
+    {
+        // ★★ ÇİFT-ORDER GÜVENLİK İNVARYANTI (kritik). POST idempotent DEĞİL → transient fail olsa BİLE retry EDİLMEMELİ:
+        // aksi halde /api/orders POST retry'ı ÇİFT ORDER yaratır. Gelecekte retry yanlışlıkla POST'a açılırsa bu test yakalar.
+        const string cluster = "res-f";
+        app.StubStatus(cluster, 500); // sürekli transient fail
+        var client = app.CreateClient();
+
+        var response = await client.PostAsync($"/{cluster}/orders", content: null);
+
+        ((int)response.StatusCode).Should().BeGreaterThanOrEqualTo(500, "POST fail'i hata olarak dönmeli");
+        app.DownstreamHits(cluster).Should().Be(1,
+            "★ POST downstream'e TAM 1 kez gitmeli — retry edilmemeli (çift-order imkânsız)");
+    }
+
+    [Fact]
+    public async Task Retry_NonAllowlistedMethod_IsNotRetried_AllowlistSemantics()
+    {
+        // ★ Allowlist (denylist DEĞİL) kanıtı: PUT idempotent olsa da allowlist'te DEĞİL → retry edilmez. Denylist
+        // ("POST hariç retry") olsaydı PUT retry edilirdi. Güvenli varsayılan: bilinmeyen/listelenmemiş method → retry yok.
+        const string cluster = "res-g";
+        app.StubStatus(cluster, 500);
+        var client = app.CreateClient();
+
+        var response = await client.PutAsync($"/{cluster}/x", content: null);
+
+        ((int)response.StatusCode).Should().BeGreaterThanOrEqualTo(500);
+        app.DownstreamHits(cluster).Should().Be(1, "allowlist dışı PUT retry edilmemeli (hit=1)");
     }
 }

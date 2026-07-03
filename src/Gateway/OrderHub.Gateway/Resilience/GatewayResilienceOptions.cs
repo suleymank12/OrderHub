@@ -19,6 +19,14 @@ internal sealed class GatewayResilienceOptions
     [Range(1, 600)]
     public int AttemptTimeoutSeconds { get; init; } = 10;
 
+    /// <summary>Retry deneme sayısı (ilk denemeye EK; 2 → toplam 3). ★ YALNIZ idempotent metodlar (GET/HEAD/OPTIONS). 0 = kapalı.</summary>
+    [Range(0, 10)]
+    public int RetryAttempts { get; init; } = 2;
+
+    /// <summary>Exponential backoff taban gecikmesi (ms); jitter eklenir.</summary>
+    [Range(1, 60000)]
+    public int RetryBaseDelayMs { get; init; } = 200;
+
     /// <summary>Per-cluster circuit-breaker ayarları.</summary>
     public CircuitBreakerOptions CircuitBreaker { get; init; } = new();
 }

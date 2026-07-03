@@ -20,11 +20,13 @@ public sealed class ResilienceAppFixture : WebApplicationFactory<Program>, IAsyn
     internal const string Secret = "gateway-resilience-test-secret-key-0123456789"; // ≥32 char (auth ValidateOnStart).
     internal const int MinimumThroughput = 4;   // CB bu kadar çağrı + %50 fail sonrası OPEN.
     internal const int AttemptTimeoutSeconds = 2;
+    internal const int RetryAttempts = 2;       // ilk + 2 retry = toplam 3 deneme (idempotent metodlar).
 
     /// <summary>Testlerin per-path stub/gecikme kurup istek sayısını okuduğu downstream.</summary>
     internal WireMockServer Downstream { get; private set; } = null!;
 
-    internal static readonly string[] Clusters = ["res-a", "res-b", "res-c", "res-d"];
+    // res-a..d: 6b-1 (CB/timeout); res-e..g: 6b-2 (retry success / POST no-retry / allowlist unknown-method).
+    internal static readonly string[] Clusters = ["res-a", "res-b", "res-c", "res-d", "res-e", "res-f", "res-g"];
 
     private readonly List<string> _envKeys = [];
 
@@ -39,6 +41,8 @@ public sealed class ResilienceAppFixture : WebApplicationFactory<Program>, IAsyn
         // Deterministik CB: uzun sampling (pencere test sırasında dolmaz) + uzun break (half-open test sırasında olmaz).
         Set("Resilience__AttemptTimeoutSeconds", AttemptTimeoutSeconds.ToString(CultureInfo.InvariantCulture));
         Set("Resilience__TotalTimeoutSeconds", "10");
+        Set("Resilience__RetryAttempts", RetryAttempts.ToString(CultureInfo.InvariantCulture));
+        Set("Resilience__RetryBaseDelayMs", "20"); // testlerde hızlı (backoff test süresini şişirmesin)
         Set("Resilience__CircuitBreaker__FailureRatio", "0.5");
         Set("Resilience__CircuitBreaker__MinimumThroughput", MinimumThroughput.ToString(CultureInfo.InvariantCulture));
         Set("Resilience__CircuitBreaker__SamplingDurationSeconds", "300");
@@ -64,6 +68,27 @@ public sealed class ResilienceAppFixture : WebApplicationFactory<Program>, IAsyn
         Downstream
             .Given(Request.Create().WithPath($"/{cluster}/*").UsingAnyMethod())
             .RespondWith(Response.Create().WithStatusCode(statusCode).WithBody($"{cluster}:{statusCode}"));
+
+    /// <summary>
+    /// Verilen cluster'ı ilk <paramref name="failTimes"/> çağrıda 500, sonrasında 200 döndürür (WireMock scenario,
+    /// stateful) → retry başarı senaryosu (transient blip'ten sonra kurtarma).
+    /// </summary>
+    internal void StubFailThenSucceed(string cluster, int failTimes)
+    {
+        var scenario = $"retry-{cluster}";
+        var path = $"/{cluster}/*";
+        for (var i = 0; i < failTimes; i++)
+        {
+            var stub = Downstream.Given(Request.Create().WithPath(path).UsingAnyMethod()).InScenario(scenario);
+            (i == 0 ? stub : stub.WhenStateIs(i))
+                .WillSetStateTo(i + 1)
+                .RespondWith(Response.Create().WithStatusCode(500).WithBody("transient"));
+        }
+
+        Downstream.Given(Request.Create().WithPath(path).UsingAnyMethod())
+            .InScenario(scenario).WhenStateIs(failTimes)
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("recovered"));
+    }
 
     /// <summary>Verilen cluster path'ini gecikmeli 200 ile yanıtlar (AttemptTimeout'u aşacak → timeout tetikler).</summary>
     internal void StubSlow(string cluster, TimeSpan delay) =>
