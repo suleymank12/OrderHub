@@ -50,4 +50,13 @@
     <PackageVersion Include="AspNetCore.HealthChecks.UI.InMemory.Storage" Version="8.0.1" />
   </ItemGroup>
 
+  <ItemGroup Label="Resilience (Faz 6 6b — Polly v8 / Http.Resilience)">
+    <!-- 8.10.0 = son net8 hattı (9.x/10.x → net9/net10 → Extensions 8 kilidini delerdi). Deps 8.x: Extensions.Resilience
+         8.10.0 + Http.Diagnostics 8.10.0 + Configuration.Binder 8.0.2 + ObjectPool 8.0.10 → Polly.Core 8.4.2 (v8).
+         throwaway + locked-mode ile doğrulandı: gateway scoped set'te Yarp 2.2.0 korunur, hiçbir 9.x/10.x sıçraması.
+         HTTP-aware strateji helper'ları (HttpCircuitBreakerStrategyOptions / HttpClientResiliencePredicates.IsTransient)
+         bu paketten → raw Polly.Core yerine bu. Saf-edge: yalnız gateway→downstream HTTP hop'una resilience. -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="8.10.0" />
+  </ItemGroup>
+
 </Project>

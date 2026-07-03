@@ -23,6 +23,10 @@ try
         .AddGatewayRateLimiting(builder.Configuration)
         .AddGatewayCors(builder.Configuration);
 
+    // ★ Resilience: AddReverseProxy'den ÖNCE → YARP forwarder factory'sini per-cluster timeout+CB'li versiyonla
+    // değiştir (YARP TryAddSingleton kullandığından erken kayıt bizimkini garanti eder). RETRY YOK (6b-2).
+    builder.Services.AddGatewayResilience(builder.Configuration);
+
     builder.Services
         .AddReverseProxy()
         .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
