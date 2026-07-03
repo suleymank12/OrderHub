@@ -134,13 +134,25 @@ else {
 }
 
 # ── TEST: 0 fail ────────────────────────────────────────────────────────────
-Write-Host 'TEST — Test paketi (0 fail):' -ForegroundColor Yellow
-& dotnet test $solution -c Debug --no-build --nologo | Out-Null
-if ($LASTEXITCODE -eq 0) {
-    Add-Result 'TEST' $true 'Tüm testler geçti'
+# ★ Testleri PROJE-PROJE SIRALI koş. `dotnet test <sln>` tek çağrıda tüm test assembly'lerinin VSTest hedeflerini
+# MSBuild ile PARALEL koşar → 6 integration projesi AYNI ANDA Testcontainers (SQL/RabbitMQ/Kafka) kaldırınca Docker/
+# makine over-subscribe olur → cross-assembly container yarışı → farklı-koşum-farklı-proje fixture-startup flake'i
+# (KOD REGRESYONU DEĞİL, makine kapasitesi). Sıralı koşum aynı anda yalnız TEK projenin container'larını kaldırır →
+# güvenilir. Assembly-İÇİ paralelizm zaten integration'da [CollectionBehavior(DisableTestParallelization)] ile kapalı;
+# cross-assembly paralelizm runner (bu script) seviyesinde çözülür — xUnit assembly attribute'u bunu kapsamaz.
+Write-Host 'TEST — Test paketi (0 fail, proje-proje sıralı → Testcontainers over-subscription önlenir):' -ForegroundColor Yellow
+$testProjects = $csprojs | Where-Object { $_.FullName -match '[\\/]tests[\\/]' } | Sort-Object FullName
+$failedProjects = [System.Collections.Generic.List[string]]::new()
+foreach ($proj in $testProjects) {
+    & dotnet test $proj.FullName -c Debug --no-build --nologo | Out-Null
+    if ($LASTEXITCODE -ne 0) { $failedProjects.Add($proj.BaseName) }
+}
+if ($failedProjects.Count -eq 0) {
+    Add-Result 'TEST' $true ("{0} test projesi sıralı geçti" -f @($testProjects).Count)
 }
 else {
-    Add-Result 'TEST' $false ("dotnet test exit={0} — 'dotnet test' ile detayı gör" -f $LASTEXITCODE)
+    foreach ($f in $failedProjects) { Write-Host ("      FAIL: {0} — 'dotnet test' ile detay" -f $f) -ForegroundColor Red }
+    Add-Result 'TEST' $false ("{0} test projesi başarısız" -f $failedProjects.Count)
 }
 
 # ── DOCKER: compose syntax ──────────────────────────────────────────────────

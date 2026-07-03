@@ -13,11 +13,14 @@
     <PackageReference Include="Confluent.Kafka" />
     <!-- IServiceCollection extension (AddRabbitMqEventBus / AddKafkaRouting) + [FromKeyedServices] için DI paketi. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- 6c-2: Kafka manuel W3C traceparent propagation (RabbitMQ MassTransit ile otomatik; Kafka custom → manuel). -->
+    <PackageReference Include="OpenTelemetry.Api" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Routing/Kafka publisher'ları internal → odaklı unit test projesine açılır (encapsulation korunur). -->
+    <!-- Routing/Kafka publisher'ları internal → odaklı unit + integration test projelerine açılır (encapsulation korunur). -->
     <InternalsVisibleTo Include="OrderHub.EventBus.UnitTests" />
+    <InternalsVisibleTo Include="OrderHub.EventBus.IntegrationTests" />
   </ItemGroup>
 
 </Project>

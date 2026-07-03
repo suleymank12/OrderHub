@@ -18,6 +18,9 @@ COPY ["src/Services/OrderProcessingService/OrderProcessingService.Infrastructure
 COPY ["src/Services/OrderProcessingService/OrderProcessingService.Infrastructure/packages.lock.json", "src/Services/OrderProcessingService/OrderProcessingService.Infrastructure/"]
 COPY ["src/Services/OrderProcessingService/OrderProcessingService.Api/OrderHub.OrderProcessingService.Api.csproj", "src/Services/OrderProcessingService/OrderProcessingService.Api/"]
 COPY ["src/Services/OrderProcessingService/OrderProcessingService.Api/packages.lock.json", "src/Services/OrderProcessingService/OrderProcessingService.Api/"]
+# Faz 6 6c-1: Api projesi OrderHub.Observability'ye ProjectReference verir (OTel tracing) → locked-mode restore için şart.
+COPY ["src/BuildingBlocks/OrderHub.Observability/OrderHub.Observability.csproj", "src/BuildingBlocks/OrderHub.Observability/"]
+COPY ["src/BuildingBlocks/OrderHub.Observability/packages.lock.json", "src/BuildingBlocks/OrderHub.Observability/"]
 
 # --locked-mode: lock dosyasına birebir uyum (reproducible; sürpriz transitive sürüm yok).
 RUN dotnet restore "src/Services/OrderProcessingService/OrderProcessingService.Api/OrderHub.OrderProcessingService.Api.csproj" --locked-mode

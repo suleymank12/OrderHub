@@ -95,6 +95,38 @@
     <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.SqlServer" Version="8.0.2" />
+    <!-- 6d: downstream /health/ready UI-JSON writer (UIResponseWriter) → gateway HealthChecks.UI dashboard poll'ü
+         parse edebilsin (plain "Healthy" → JSON parse-fail'di, dashboard hepsini Unhealthy gösteriyordu). Hafif paket
+         (UI.Core + Diagnostics.HealthChecks; KubernetesClient YOK) → root'ta güvenli (throwaway: EF 8.0.11, 9.x yok). -->
+    <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="8.0.1" />
+    <!-- Serilog core (ILogEventEnricher/LogEvent) — Observability building block'un TraceContextEnricher'ı için
+         explicit pin (sink'lerden transitive gelen 4.0.0 ile aynı hat). -->
+    <PackageVersion Include="Serilog" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Observability (Faz 6 6c — OpenTelemetry tracing)">
+    <!-- ★ 1.15.x STABLE, net8. throwaway + locked-mode ile doğrulandı: root'ta ağır footprint (EF Core SqlServer +
+         MassTransit + Kafka) ile birlikte EF Core 8.0.11 LTS kilidi KORUNUR, Microsoft.Extensions 8.x, sıfır 9.x/10.x
+         (HealthChecks.UI'nin AKSİNE OTel iyi davranıyor → root'a güvenli, scoped'a kaçmaya gerek yok).
+         ★ DB span: Instrumentation.SqlClient (STABLE) — EF Core instrumentation beta-only olduğundan KULLANILMADI
+         (K2); EF zaten SqlClient üzerinden gider → gerçek SQL span, EF Core'a bağımlılık yok. -->
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+    <!-- 6c-2: EventBus'ta Kafka manuel W3C traceparent propagation (Propagators/PropagationContext/TraceContextPropagator)
+         + ActivitySource → OpenTelemetry.Api (leaf, DiagnosticSource üstü; ağır transitive yok). -->
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
+    <!-- 6c-2 trace e2e testi: Sdk.CreateTracerProviderBuilder (OpenTelemetry) + AddInMemoryExporter (ayrı paket) — test-only. -->
+    <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.16.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Gateway (YARP reverse proxy)">
+    <!-- YARP 2.x: net8 uyumlu reverse proxy (CLAUDE.md §3 stack kilidi). Microsoft.Extensions.* 8.x'e bağlı →
+         EF Core 8 / .NET 8 LTS kilidini DELMEZ (Faz 5 EF Core 9 dersi; locked-mode restore ile doğrulanır). -->
+    <PackageVersion Include="Yarp.ReverseProxy" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="Test (ortak + projeye özel)">
@@ -112,6 +144,8 @@
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <!-- Gateway integration testlerinde downstream stub (YARP route/forward doğrulaması). net8 uyumlu. -->
+    <PackageVersion Include="WireMock.Net" Version="1.6.7" />
   </ItemGroup>
 
 </Project>

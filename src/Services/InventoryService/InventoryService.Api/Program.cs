@@ -1,10 +1,12 @@
 using System.Globalization;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OrderHub.InventoryService.Api.Extensions;
 using OrderHub.InventoryService.Application;
 using OrderHub.InventoryService.Infrastructure;
 using OrderHub.InventoryService.Infrastructure.Persistence;
 using OrderHub.InventoryService.Api.BackgroundJobs;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger DI/startup hatalarını da yakalar.
@@ -28,6 +30,8 @@ try
         .AddHangfireServices(builder.Configuration, builder.Environment)
         .AddApiServices(builder.Configuration);
 
+    builder.Services.AddObservability("inventoryservice", builder.Configuration);
+
     var app = builder.Build();
 
     // ADR-0001 (Seçenek B): yalnızca Development'ta startup migration → "docker-compose up" tek komut.
@@ -45,7 +49,7 @@ try
 
     // Liveness: app ayakta mı (dependency check'i YOK). Readiness: "ready" tag'li check'ler (DB).
     app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready"), ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
 
     app.Run();
 }

@@ -120,6 +120,8 @@ services:
       # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # ★ 6c-1: distributed tracing → OTLP/HTTP export to Seq (Seq 2024.1+ OTLP ingest). Log ingest (5341) devam eder; traces ayrı OTLP path.
+      Otlp__Endpoint: http://seq:5341/ingest/otlp/v1/traces
     depends_on:
       sqlserver:
         condition: service_healthy # şema migration'ı için DB hazır olmalı
@@ -149,6 +151,8 @@ services:
       # Seq sink yalnızca container'da aktif (index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # ★ 6c-1: distributed tracing → OTLP/HTTP export to Seq (Seq 2024.1+ OTLP ingest). Log ingest (5341) devam eder; traces ayrı OTLP path.
+      Otlp__Endpoint: http://seq:5341/ingest/otlp/v1/traces
     depends_on:
       sqlserver:
         condition: service_healthy # şema migration'ı için DB hazır olmalı
@@ -176,6 +180,8 @@ services:
       # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # ★ 6c-1: distributed tracing → OTLP/HTTP export to Seq (Seq 2024.1+ OTLP ingest). Log ingest (5341) devam eder; traces ayrı OTLP path.
+      Otlp__Endpoint: http://seq:5341/ingest/otlp/v1/traces
     depends_on:
       sqlserver:
         condition: service_healthy # OrderHub_Analytics migration'ı için DB hazır olmalı
@@ -203,6 +209,8 @@ services:
       # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # ★ 6c-1: distributed tracing → OTLP/HTTP export to Seq (Seq 2024.1+ OTLP ingest). Log ingest (5341) devam eder; traces ayrı OTLP path.
+      Otlp__Endpoint: http://seq:5341/ingest/otlp/v1/traces
       # JWT YOK: HTTP endpoint yok (command-driven) → secret gerekmez (K3). Kafka YOK: Inventory Kafka'ya
       # produce/consume etmez (saga RabbitMQ command-style, ADR-0007 Karar 4).
     depends_on:
@@ -233,6 +241,8 @@ services:
       # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # ★ 6c-1: distributed tracing → OTLP/HTTP export to Seq (Seq 2024.1+ OTLP ingest). Log ingest (5341) devam eder; traces ayrı OTLP path.
+      Otlp__Endpoint: http://seq:5341/ingest/otlp/v1/traces
       # JWT YOK: HTTP endpoint yok (saga RabbitMQ ile orkestre eder) → secret gerekmez (K3). Kafka YOK
       # (saga RabbitMQ command-style, ADR-0007 Karar 4). Hangfire YOK (scheduler InventoryService'te).
     depends_on:
@@ -261,6 +271,8 @@ services:
       # Seq sink yalnızca container'da aktif (appsettings'e dokunmadan inject; index 2 = Console+File'dan sonra).
       Serilog__WriteTo__2__Name: Seq
       Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # ★ 6c-1: distributed tracing → OTLP/HTTP export to Seq (Seq 2024.1+ OTLP ingest). Log ingest (5341) devam eder; traces ayrı OTLP path.
+      Otlp__Endpoint: http://seq:5341/ingest/otlp/v1/traces
       # JWT YOK: HTTP endpoint yok (Kafka consumer-only) → secret gerekmez (K3). RabbitMQ YOK.
     depends_on:
       sqlserver:
@@ -270,6 +282,44 @@ services:
       seq:
         condition: service_started
     # restart YOK: startup/migration hatası görünür kalsın (diğer servislerle aynı kural).
+    networks:
+      - orderhub
+
+  gateway:
+    build:
+      context: .. # repo kökü (diğer servislerle aynı context)
+      dockerfile: src/Gateway/OrderHub.Gateway/Dockerfile
+    environment:
+      # ADR-0001 mirror: dev-token route'unun (OrderService dev-only endpoint) çalışması için Development.
+      ASPNETCORE_ENVIRONMENT: Development
+      # ★ JWT MERKEZİ: downstream servislerle AYNI secret → OrderService'in ürettiği token gateway'de de geçerli
+      # (merkezi erken-401 + downstream defense-in-depth). Secret env'den (K3); Issuer/Audience appsettings'te.
+      JwtSettings__Secret: ${JWT_SECRET}
+      # ReverseProxy destination'ları appsettings'te compose service adlarıyla default (orderservice:8080 vb) → override YOK.
+      # Seq sink yalnızca container'da aktif (index 2 = Console+File'dan sonra).
+      Serilog__WriteTo__2__Name: Seq
+      Serilog__WriteTo__2__Args__serverUrl: http://seq:5341
+      # ★ 6c-1: distributed tracing → OTLP/HTTP export to Seq (Seq 2024.1+ OTLP ingest). Log ingest (5341) devam eder; traces ayrı OTLP path.
+      Otlp__Endpoint: http://seq:5341/ingest/otlp/v1/traces
+      # Saf edge: DB/RabbitMQ/Kafka YOK (YARP HTTP forward eder).
+    depends_on:
+      orderservice:
+        condition: service_started # route hedefi (YARP bağlanamazsa retry eder → health beklemeye gerek yok)
+      paymentservice:
+        condition: service_started
+      analyticsservice:
+        condition: service_started
+      # ★ 6a-2 health dashboard: route edilmeyen servisler de /health/ready poll edilir (operasyonel görünürlük).
+      # service_started yeterli — HealthChecks.UI poll'ü retry'lı (servis geç hazır olursa panoda kırmızı→yeşil geçer).
+      inventoryservice:
+        condition: service_started
+      orderprocessingservice:
+        condition: service_started
+      notificationservice:
+        condition: service_started
+      seq:
+        condition: service_started
+    # restart YOK: startup hatası (eksik secret / config) görünür kalsın.
     networks:
       - orderhub
 

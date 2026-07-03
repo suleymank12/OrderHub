@@ -1,8 +1,10 @@
 using System.Globalization;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OrderHub.OrderProcessingService.Api.Extensions;
 using OrderHub.OrderProcessingService.Infrastructure;
 using OrderHub.OrderProcessingService.Infrastructure.Persistence;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger DI/startup hatalarını da yakalar.
@@ -24,6 +26,8 @@ try
         .AddInfrastructure(builder.Configuration)
         .AddApiServices(builder.Configuration);
 
+    builder.Services.AddObservability("orderprocessingservice", builder.Configuration);
+
     var app = builder.Build();
 
     // ADR-0001 (Seçenek B): yalnızca Development'ta startup migration → "docker-compose up" tek komut.
@@ -40,7 +44,7 @@ try
 
     // Liveness: app ayakta mı (dependency check'i YOK). Readiness: "ready" tag'li check'ler (DB).
     app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready"), ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
 
     app.Run();
 }

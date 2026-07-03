@@ -431,43 +431,59 @@ PaymentFailed → ReleaseStock → CancelOrder
 
 **Agent öncelik sırası:** `devops-engineer` → `backend-developer` → `test-engineer`
 
-## 6.1 YARP Gateway
+## 6.1 YARP Gateway (6a-1)
 
-- [ ] `OrderHub.Gateway` projesi
-- [ ] Route config: `/api/orders/*` → OrderService, `/api/payments/*` → PaymentService, `/api/analytics/*` → AnalyticsService, vs.
-- [ ] JWT validation gateway'de **tek yerden** (downstream'lere claims forward)
-- [ ] Rate limiting (ASP.NET Core 8 native)
-- [ ] CORS
+- [x] `OrderHub.Gateway` projesi (saf-edge: hiçbir ProjectReference, stateless)
+- [x] Route config: `/api/orders/*` → OrderService, `/api/payments/*` → PaymentService, `/api/analytics/*` → AnalyticsService, `/api/dev/token` (anonymous)
+- [x] JWT validation gateway'de **merkezi** (erken 401). ★ Not: "claims forward" yerine **defense-in-depth** —
+  downstream de auth'unu KORUR (gateway bypass edilirse açıkta kalmasın, ADR-0008 Karar 4)
+- [x] Rate limiting (ASP.NET Core 8 native, per-client fixed-window)
+- [x] CORS (config-driven, dev-loose / prod-restrict)
 
-## 6.2 Polly
+## 6.2 Polly (6b-1/6b-2)
 
-- [ ] HttpClient'lara `Microsoft.Extensions.Http.Resilience` pipeline
-- [ ] Retry (exponential), circuit breaker, timeout
-- [ ] Gateway → downstream çağrılarında uygulanır
+- [x] `Microsoft.Extensions.Http.Resilience` (8.10.0) — YARP forwarder'a `WrapHandler` ile per-cluster pipeline
+- [x] Retry (exponential+jitter), circuit breaker (per-cluster), timeout. ★ Retry **idempotent-only allowlist**
+  (GET/HEAD/OPTIONS); POST asla → çift-order guard (ADR-0008 Karar 3)
+- [x] Gateway → downstream çağrılarında uygulanır (saf-edge korunur)
 
-## 6.3 OpenTelemetry
+## 6.3 OpenTelemetry — **tracing** (6c-1/6c-2)
 
-- [ ] Tüm servislerde OTel SDK + ASP.NET Core instrumentation + EF Core instrumentation + MassTransit instrumentation + HttpClient instrumentation
-- [ ] OTLP exporter → Seq (Seq OTLP destekliyor) veya Jaeger
-- [ ] Trace ID Serilog log'larına enrich edilir
+- [x] 7 host'ta OTel SDK + ASP.NET Core + HttpClient + **SqlClient** (DB span; ★ EF Core instrumentation **beta**
+  olduğundan SqlClient-stable seçildi) + MassTransit (RabbitMQ hop otomatik) instrumentation
+- [x] OTLP exporter → Seq (Seq 2024.3 OTLP ingest). Trace ID Serilog log'larına enrich (log↔trace korelasyon)
+- [x] ★ Kafka hop **manuel W3C propagation** (custom producer/consumer; RabbitMQ otomatik değil, ADR-0008 Karar 2)
+- [ ] **METRICS: bilinçli ertelendi (Karar C)** — bu faz yalnız *tracing*; `/metrics` Prometheus + Grafana **Faz 7+**
 
-## 6.4 Healthcheck dashboard
+## 6.4 Healthcheck dashboard (6a-2 + 6d)
 
-- [ ] `AspNetCore.HealthChecks.UI` Gateway'de host'lanır
-- [ ] Tüm servislerin `/health/ready` endpoint'leri burada görünür
+- [x] `AspNetCore.HealthChecks.UI` Gateway'de host'lanır (`/health-ui`), scoped-CPM ile (ADR-0008 Karar 1)
+- [x] 6 servisin `/health/ready`'si config-driven poll edilir; ★ 6d: downstream'ler `UIResponseWriter` (UI-JSON) döndürür
+  → dashboard hepsini **yeşil** gösterir (fresh-volume smoke'ta doğrulandı; plain "Healthy" parse-fail'i düzeltildi)
 
-## 6.5 Testler
+## 6.5 Testler (6a/6b/6c)
 
-- [ ] Integration: Gateway → OrderService route doğru
-- [ ] Integration: invalid JWT → 401
-- [ ] Integration: downstream timeout → Polly circuit breaker açılıyor
+- [x] Integration: Gateway → downstream route (WireMock stub) doğru
+- [x] Integration: invalid/eksik JWT → 401 (downstream'e gitmeden)
+- [x] Integration: downstream fail → per-cluster CB açılır (★ deterministik "hit-freeze" çapası) + timeout → bounded 5xx
+- [x] Retry: idempotent GET recover (hit=3) + **POST no-retry** (hit=1, çift-order invariant) + Kafka trace e2e (gerçek Kafka)
 
 ## 6.6 Kabul Kriteri
 
-- ✅ Tüm trafik Gateway üzerinden geçiyor
-- ✅ Bir trace ID order create'ten payment'a kadar takip edilebiliyor (Seq/Jaeger'da görünür)
-- ✅ Downstream çökerse Gateway 503 dönüyor, circuit açılıyor
-- ✅ Healthcheck dashboard tüm servisleri yeşil/kırmızı gösteriyor
+- ✅ Tüm trafik Gateway üzerinden geçiyor (smoke: order create/happy/compensation :8000 edge'den)
+- ✅ Bir order'ın trace'i Seq'te izlenebiliyor — ★ **dürüst:** outbox asenkron publish'i trace'i segmentler (bir order =
+  çok trace-id); her hop KENDİ segmentinde kesintisiz: edge (gateway+order), saga (order+saga+inventory+payment, RabbitMQ
+  otomatik), Kafka (order+analytics+notification, manuel W3C). Manuel Seq gözlemi (log-korelasyon + span-tree, phase-6.md)
+- ✅ Downstream çökerse gateway per-cluster CB açar (fast-fail), timeout → bounded hata
+- ✅ Healthcheck dashboard 6 servisi yeşil gösteriyor (6d fresh-volume smoke)
+
+### 6.7 Honest sınırlar (Faz 5 deseni)
+
+- **Metrics/Grafana ayrı faz** (Karar C) — en önemli açık; bu faz yalnız tracing.
+- **Tam-7-host tek-trace** yok (outbox segmentasyonu, ADR-0008 Karar 2 dürüst sınır); uçtan uca için outbox'a traceparent
+  saklama gerekir (follow-up). Otomatik test riskli Kafka hop'unu izole kanıtlar; tam-zincir **manuel smoke-gözlem**.
+- **Gateway dev-expose** (prod'da yalnız edge; dev'de downstream 8080-8086 de açık — dokümante sınır).
+- **Rate-limit / CORS prod-sıkılaştırma** (dev-loose default).
 
 **Tahmini süre:** 6-8 saat
 

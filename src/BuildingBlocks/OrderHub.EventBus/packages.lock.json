@@ -41,6 +41,15 @@
         "resolved": "8.0.2",
         "contentHash": "3iE7UF7MQkCv1cxzCahz+Y/guQbTqieyxyaWKhrRO91itI9cOKO76OHeQDahqG4MmW5umr3CcCvGmK92lWNlbg=="
       },
+      "OpenTelemetry.Api": {
+        "type": "Direct",
+        "requested": "[1.16.0, )",
+        "resolved": "1.16.0",
+        "contentHash": "WZP8Eb6vZTeNqeV+fjBitc7iefBoTHIhaWorqg/h/YiQBlcQJu0bICuTqKV0XRyjiE0eWs80yLlnUtHAFSkFWA==",
+        "dependencies": {
+          "System.Diagnostics.DiagnosticSource": "10.0.0"
+        }
+      },
       "librdkafka.redist": {
         "type": "Transitive",
         "resolved": "2.6.1",
@@ -97,6 +106,11 @@
           "System.IO.Pipelines": "8.0.0",
           "System.Threading.RateLimiting": "8.0.0"
         }
+      },
+      "System.Diagnostics.DiagnosticSource": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "0KdBK+h7G13PuOSC2R/DalAoFMvdYMznvGRuICtkdcUMXgl/gYXsG6z4yUvTxHSMACorWgHCU1Faq0KUHU6yAQ=="
       },
       "System.IO.Pipelines": {
         "type": "Transitive",

@@ -14,6 +14,7 @@
     <!-- Clean Arch: Api → Application + Infrastructure (DbContext, consumer, migration). -->
     <ProjectReference Include="..\NotificationService.Application\OrderHub.NotificationService.Application.csproj" />
     <ProjectReference Include="..\NotificationService.Infrastructure\OrderHub.NotificationService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Observability\OrderHub.Observability.csproj" />
   </ItemGroup>
 
   <!-- JWT/Swagger YOK: NotificationService 5f-2'de HTTP endpoint'siz (Kafka consumer + Hangfire). -->
@@ -22,6 +23,7 @@
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
     <!-- Hangfire: server (IHostedService) + ASP.NET Core DI entegrasyonu. -->
     <PackageReference Include="Hangfire.AspNetCore" />
     <!-- SQL Server storage: HangFire şeması domain DB'sinde (ADR-0003 precedent). -->

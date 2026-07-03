@@ -27,6 +27,9 @@ COPY ["src/Services/PaymentService/PaymentService.Infrastructure/OrderHub.Paymen
 COPY ["src/Services/PaymentService/PaymentService.Infrastructure/packages.lock.json", "src/Services/PaymentService/PaymentService.Infrastructure/"]
 COPY ["src/Services/PaymentService/PaymentService.Api/OrderHub.PaymentService.Api.csproj", "src/Services/PaymentService/PaymentService.Api/"]
 COPY ["src/Services/PaymentService/PaymentService.Api/packages.lock.json", "src/Services/PaymentService/PaymentService.Api/"]
+# Faz 6 6c-1: Api projesi OrderHub.Observability'ye ProjectReference verir (OTel tracing) → locked-mode restore için şart.
+COPY ["src/BuildingBlocks/OrderHub.Observability/OrderHub.Observability.csproj", "src/BuildingBlocks/OrderHub.Observability/"]
+COPY ["src/BuildingBlocks/OrderHub.Observability/packages.lock.json", "src/BuildingBlocks/OrderHub.Observability/"]
 
 # --locked-mode: lock dosyasına birebir uyum (reproducible; sürpriz transitive sürüm yok).
 RUN dotnet restore "src/Services/PaymentService/PaymentService.Api/OrderHub.PaymentService.Api.csproj" --locked-mode

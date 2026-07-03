@@ -53,7 +53,7 @@ public sealed class StockReservationConsumerEndToEndTests(
             stockItem.Reservations.Should().ContainSingle(r =>
                 r.OrderId == orderId && r.Status == ReservationStatus.Pending);
 
-            var hasRow = await HasOutboxRowAsync(provider, "StockReservedIntegrationEvent", cts.Token);
+            var hasRow = await HasOutboxRowAsync(provider, "StockReservedIntegrationEvent", orderId, cts.Token);
             hasRow.Should().BeTrue("transactional outbox row proves the consume → aggregate → outbox chain");
         }
         finally
@@ -84,7 +84,7 @@ public sealed class StockReservationConsumerEndToEndTests(
                 Quantity = 5,
             }, cts.Token);
 
-            await WaitForOutboxRowAsync(provider, "StockReservationFailedIntegrationEvent", cts.Token);
+            await WaitForOutboxRowAsync(provider, "StockReservationFailedIntegrationEvent", orderId, cts.Token);
 
             var stockItem = await LoadStockItemAsync(provider, productId, cts.Token);
             stockItem.AvailableQuantity.Should().Be(2, "insufficient stock must leave available quantity unchanged");
@@ -159,14 +159,14 @@ public sealed class StockReservationConsumerEndToEndTests(
             await WaitForPendingReservationAsync(provider, productId, orderId, cts.Token);
 
             await busControl.Publish(ConfirmOf(orderId, productId, Guid.NewGuid()), cts.Token);
-            await WaitForOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", cts.Token);
+            await WaitForOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", orderId, cts.Token);
 
             var stockItem = await LoadStockItemAsync(provider, productId, cts.Token);
             stockItem.Reservations.Should().ContainSingle(r =>
                 r.OrderId == orderId && r.Status == ReservationStatus.Confirmed);
 
             // 5d-3 (C2): confirm domain event'i artık outbox'a map'lenir → saga'ya gider.
-            var hasRow = await HasOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", cts.Token);
+            var hasRow = await HasOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", orderId, cts.Token);
             hasRow.Should().BeTrue("confirm → StockReservationConfirmed domain event → outbox map → saga'ya integration event");
         }
         finally
@@ -195,7 +195,7 @@ public sealed class StockReservationConsumerEndToEndTests(
             // İlki Pending→Confirmed (event + outbox satırı); ikincisi aggregate no-op (Confirm()=false → event YOK).
             // Aggregate-level idempotency (5c rafine) kanıtı: saga per-ürün confirm sayacı için ÇİFT integration event olmamalı.
             await busControl.Publish(ConfirmOf(orderId, productId, Guid.NewGuid()), cts.Token);
-            await WaitForOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", cts.Token);
+            await WaitForOutboxRowAsync(provider, "StockReservationConfirmedIntegrationEvent", orderId, cts.Token);
 
             await busControl.Publish(ConfirmOf(orderId, productId, Guid.NewGuid()), cts.Token);
             await Task.Delay(TimeSpan.FromSeconds(4), cts.Token);
@@ -305,8 +305,11 @@ public sealed class StockReservationConsumerEndToEndTests(
         }
     }
 
+    // ★ Order-SCOPED bekleyiş (payload = orderId): DB testler arası paylaşıldığından type-only eşleşme, KARDEŞ
+    // bir testin bıraktığı stale satırda erken dönebilir → bu order'ın consume'u (yük altında geç) bitmeden
+    // assertion → flaky. orderId'ye scope'lamak "spesifik pozitif sinyal"i garantiler (5d-7/5e-3 dersi); 90s bound korunur.
     private static async Task WaitForOutboxRowAsync(
-        IServiceProvider provider, string typeFragment, CancellationToken ct)
+        IServiceProvider provider, string typeFragment, Guid orderId, CancellationToken ct)
     {
         while (true)
         {
@@ -315,7 +318,7 @@ public sealed class StockReservationConsumerEndToEndTests(
             {
                 var ctx = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
                 if (await ctx.OutboxMessages.AsNoTracking()
-                    .AnyAsync(m => m.Type.Contains(typeFragment), ct))
+                    .AnyAsync(m => m.Type.Contains(typeFragment) && m.Payload.Contains(orderId.ToString()), ct))
                     return;
             }
 
@@ -334,13 +337,14 @@ public sealed class StockReservationConsumerEndToEndTests(
             .FirstAsync(s => s.ProductId == productId, ct);
     }
 
+    // Order-SCOPED (payload = orderId): type-only eşleşme kardeş testin satırında yanlış-pozitif verebilir.
     private static async Task<bool> HasOutboxRowAsync(
-        IServiceProvider provider, string typeFragment, CancellationToken ct)
+        IServiceProvider provider, string typeFragment, Guid orderId, CancellationToken ct)
     {
         using var scope = provider.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
         return await ctx.OutboxMessages.AsNoTracking()
-            .AnyAsync(m => m.Type.Contains(typeFragment), ct);
+            .AnyAsync(m => m.Type.Contains(typeFragment) && m.Payload.Contains(orderId.ToString()), ct);
     }
 
     private static async Task<int> CountOutboxRowsByOrderIdAsync(

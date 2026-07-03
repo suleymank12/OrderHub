@@ -14,6 +14,7 @@
     <!-- Clean Arch: Api → Application (query/DTO) + Infrastructure (DbContext, consumer, read-repo, migration). -->
     <ProjectReference Include="..\AnalyticsService.Application\OrderHub.AnalyticsService.Application.csproj" />
     <ProjectReference Include="..\AnalyticsService.Infrastructure\OrderHub.AnalyticsService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Observability\OrderHub.Observability.csproj" />
   </ItemGroup>
 
   <!-- Hangfire YOK: AnalyticsService'in zamanlanmış job'u yok. -->
@@ -24,6 +25,7 @@
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
   </ItemGroup>
 
 </Project>

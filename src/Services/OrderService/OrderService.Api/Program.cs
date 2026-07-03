@@ -1,4 +1,5 @@
 using System.Globalization;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OrderHub.OrderService.Api.BackgroundJobs;
 using OrderHub.OrderService.Api.Contracts;
@@ -8,6 +9,7 @@ using OrderHub.OrderService.Application.Orders.Configuration;
 using OrderHub.OrderService.Application;
 using OrderHub.OrderService.Infrastructure;
 using OrderHub.OrderService.Infrastructure.Persistence;
+using OrderHub.Observability;
 using Serilog;
 
 // Two-stage Serilog init: bootstrap logger configuration okunmadan önceki (DI/startup) hatalarını da yakalar.
@@ -39,6 +41,8 @@ try
         .ValidateOnStart();
 
     builder.Services.AddControllers();
+
+    builder.Services.AddObservability("orderservice", builder.Configuration);
 
     var app = builder.Build();
 
@@ -75,7 +79,7 @@ try
 
     // Liveness: app ayakta mı (dependency check'i YOK). Readiness: "ready" tag'li check'ler (DB).
     app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready"), ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
 
     // Development-only token endpoint: gerçek login/identity provider kapsam dışı. Prod'da bu kod yolu
     // hiç çalışmaz (pipeline'a eklenmez) → attack surface yok.

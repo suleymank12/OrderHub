@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PaymentService.Application\OrderHub.PaymentService.Application.csproj" />
     <ProjectReference Include="..\PaymentService.Infrastructure\OrderHub.PaymentService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\OrderHub.Observability\OrderHub.Observability.csproj" />
   </ItemGroup>
 
   <!-- Hangfire YOK: PaymentService'in zamanlanmış/recurring job'u yok (timeout OrderService'te). -->
@@ -23,6 +24,7 @@
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
   </ItemGroup>
 
 </Project>

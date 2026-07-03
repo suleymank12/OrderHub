@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.Gateway.IntegrationTests</AssemblyName>
+    <RootNamespace>OrderHub.Gateway.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gateway\OrderHub.Gateway\OrderHub.Gateway.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <!-- WebApplicationFactory<Program>: gateway'i in-process host'lar (JWT/rate-limit/YARP middleware'i). -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <!-- Downstream stub: YARP cluster'ı WireMock URL'ine yöneltilir → routing/forward doğrulanır. -->
+    <PackageReference Include="WireMock.Net" />
+  </ItemGroup>
+
+</Project>

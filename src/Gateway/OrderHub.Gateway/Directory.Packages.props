@@ -1,0 +1,74 @@
+<Project>
+
+  <!-- ============================================================================================
+       ★ GATEWAY-SCOPED Central Package Management (Faz 6 6a-2)
+
+       NEDEN AYRI DOSYA: NuGet, bir projeye EN YAKIN Directory.Packages.props'u kullanır (merge YOK).
+       Bu dosya, gateway için root'taki 40-pin'lik seti DEVRE DIŞI bırakır. Gerekçe: HealthChecks.UI
+       8.0.1 grafiği (transitive olarak KubernetesClient / YamlDotNet / Fractions / prometheus-net /
+       EF Core çeker; bazıları sürümsüz transitive bağımlılık deklare eder) root'un büyük merkezi-pin
+       setiyle birleşince NuGet resolver'ı bozuyordu: TÜM top-level paketler alt-sınırını kaybediyor
+       (NU1604) ve EN ESKİ sürüme çöküyordu — Yarp → 1.0.0 (GÜVENLİK AÇIKLI), Serilog.Sinks.Seq → 1.4.4.
+       Root'tan tek paket çıkarmak düzeltmiyor (bisect: çoklu-tetikleyici). Küçük scoped set ile resolver
+       düzgün çözüyor (Yarp 2.2.0). CPM KORUNUR (§1.1) — yalnız hiyerarşik olarak scope'lanır.
+
+       NEDEN GATEWAY'E ÖZEL: Gateway zaten MİMARİ İZOLE — saf-edge, HİÇBİR ProjectReference (Contracts/
+       servis/building-block YOK), kendi Dockerfile restore'u. Scoped props bu izolasyonu paket-yönetimine
+       yansıtır; zorlama değil. ★ Başka servis bu deseni KOPYALAMAMALI — onlar building-block paylaşır,
+       merkezi pin'e ihtiyaç duyar; scoped yalnız gateway'in (ve test'inin) özel izolasyonu içindir.
+
+       ★ GÜVENLİK-BAKIM RİSKİ (bilinçli, iki-yerde-güncelleme): Root ile ORTAK paketler (JwtBearer,
+       Serilog.*) burada da pinlenir. Root'ta bir güvenlik/CVE güncellemesi yapıldığında BU DOSYA da
+       gözden geçirilmeli — sürümler AYNI kalmalı (divergence = güvenlik + davranış tutarsızlığı riski).
+       Şu an root ile birebir aynı: JwtBearer 8.0.11, Serilog.AspNetCore 8.0.3, Sinks.Seq 8.0.0,
+       Sinks.File 6.0.0, Yarp 2.2.0. Aynı not tests/Gateway.IntegrationTests/Directory.Packages.props'ta.
+       ============================================================================================ -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Root ile aynı disiplin: transitive'ler de merkezi versiyona sabitlenir (diamond sürprizini keser). -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Gateway (YARP reverse proxy) — root ile AYNI sürüm">
+    <PackageVersion Include="Yarp.ReverseProxy" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Auth / Logging — root ile AYNI sürüm (ortak paket, divergence olmasın)">
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Health dashboard (Faz 6 6a-2)">
+    <!-- 8.x = son net8 hattı (v9+ net9'a bağlanır → EF Core 8 LTS kilidini delerdi, Faz 5 dersi). Sabit 8.x
+         pin + locked-mode restore → 9.x/net9 sıçraması YOK. UI.InMemory.Storage → EF Core InMemory transitive'i
+         de bu scoped set içinde çözülür. Saf-edge korunur: dashboard 6 servisi HTTP poll eder (ProjectReference YOK). -->
+    <PackageVersion Include="AspNetCore.HealthChecks.UI" Version="8.0.1" />
+    <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="8.0.1" />
+    <PackageVersion Include="AspNetCore.HealthChecks.UI.InMemory.Storage" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Observability (Faz 6 6c — OpenTelemetry tracing, gateway subset)">
+    <!-- ★ Gateway pure-edge: SqlClient/MassTransit YOK (gateway'de DB/message-bus yok). AspNetCore (incoming) +
+         Http (outgoing→downstream, W3C traceparent otomatik inject) + OTLP. Building block ProjectRef ALMAZ →
+         OTel paketleri burada (scoped). throwaway ile doğrulandı: Yarp 2.2.0 korunur, 9.x yok. Serilog core =
+         TraceContextEnricher (gateway kopyası) için. Root ile AYNI sürüm (güvenlik-bakım notu: bkz. dosya başı). -->
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+    <PackageVersion Include="Serilog" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Resilience (Faz 6 6b — Polly v8 / Http.Resilience)">
+    <!-- 8.10.0 = son net8 hattı (9.x/10.x → net9/net10 → Extensions 8 kilidini delerdi). Deps 8.x: Extensions.Resilience
+         8.10.0 + Http.Diagnostics 8.10.0 + Configuration.Binder 8.0.2 + ObjectPool 8.0.10 → Polly.Core 8.4.2 (v8).
+         throwaway + locked-mode ile doğrulandı: gateway scoped set'te Yarp 2.2.0 korunur, hiçbir 9.x/10.x sıçraması.
+         HTTP-aware strateji helper'ları (HttpCircuitBreakerStrategyOptions / HttpClientResiliencePredicates.IsTransient)
+         bu paketten → raw Polly.Core yerine bu. Saf-edge: yalnız gateway→downstream HTTP hop'una resilience. -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="8.10.0" />
+  </ItemGroup>
+
+</Project>

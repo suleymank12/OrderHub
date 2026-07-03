@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.Gateway</AssemblyName>
+    <RootNamespace>OrderHub.Gateway</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Internal tipler (JwtSettings vb.) yalnızca integration test assembly'sine açılır (§9). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="OrderHub.Gateway.IntegrationTests" />
+  </ItemGroup>
+
+  <!-- ★ SAF EDGE: OrderHub.Contracts'a veya HİÇBİR servis projesine ProjectReference YOK.
+       Gateway HTTP forward eder (YARP), domain tipi bilmez; stateless (DB/EF/migration yok). -->
+  <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.InMemory.Storage" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Seq" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <!-- ★ 6c-1 Observability (gateway subset — pure-edge, building block ProjectRef YOK): AspNetCore (incoming) +
+         Http (outgoing→downstream, W3C traceparent otomatik inject) + OTLP. SqlClient/MassTransit YOK. Serilog =
+         TraceContextEnricher (gateway kopyası). -->
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+</Project>

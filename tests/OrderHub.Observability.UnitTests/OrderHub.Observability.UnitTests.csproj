@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OrderHub.Observability.UnitTests</AssemblyName>
+    <RootNamespace>OrderHub.Observability.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\OrderHub.Observability\OrderHub.Observability.csproj" />
+  </ItemGroup>
+
+  <!-- Ortak test paketleri → tests/Directory.Build.props. FluentAssertions projeye özel. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+</Project>
