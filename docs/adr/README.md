@@ -32,6 +32,7 @@ hangi problem, hangi seçenekler, hangi kriterler, neden bu, hangi yeni sorunlar
 | [0006](0006-kafka-event-streaming.md) | Kafka event streaming (RabbitMQ command-only, Kafka event-log) | 4 | Accepted | 2026-06-25 |
 | [0007](0007-saga-orchestration.md) | Saga orchestration (orchestration vs choreography) | 5 | Accepted | 2026-06-26 |
 | [0008](0008-gateway-edge-and-observability.md) | Gateway edge + distributed observability | 6 | Accepted | 2026-07-03 |
+| [0009](0009-database-per-service.md) | Database-per-service (servis başına ayrı DB) | 7 | Accepted | 2026-07-04 |
 
 ## İlgili
 

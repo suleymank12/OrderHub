@@ -283,6 +283,13 @@ Sipariş oluşturulduğunda saga (OrderProcessingService) `OrderPlaced` event'iy
 otomatik sürer; siparişin durumu `GET http://localhost:8000/api/orders/{id}` ile,
 akışı ise **Seq**'te (log + trace) izlenebilir.
 
+### API Collection (Postman)
+
+Tüm endpoint'ler için hazır collection: [`postman/`](postman/). Import et → **OrderHub Local** environment'ını
+seç → **Dev Token** → **Create Order** akışını çalıştır (`{{token}}`/`{{orderId}}` otomatik set edilir).
+Bruno/Insomnia bu collection'ı doğrudan import eder. ★ Dürüst akış sınırı ([ADR-0007](docs/adr/0007-saga-orchestration.md)):
+`Confirm`/`Pay` HTTP'de yok — saga otomatik sürer, collection'da uydurma istek yok.
+
 ---
 
 ## Project Structure

@@ -1,0 +1,229 @@
+{
+  "info": {
+    "_postman_id": "0e7b7e00-0007-4c07-8007-000000000007",
+    "name": "OrderHub",
+    "description": "OrderHub API — tüm istekler **gateway edge**'inden (`{{baseUrl}}` = http://localhost:8000) geçer.\n\n## Auth\n1. **Auth → Dev Token** çağır (Development-only, anonymous). Test script dönen JWT'yi `{{token}}` env değişkenine yazar.\n2. Sonraki tüm istekler collection-seviyesi **Bearer {{token}}** ile gider (Dev Token hariç).\n\n> `OrderHub Local` environment'ını seç (baseUrl/token/orderId/paymentId).\n\n## ★ DÜRÜST AKIŞ SINIRI (K2)\n`Confirm` / `Pay` / `Ship` için **HTTP endpoint YOKTUR** (bkz. ADR-0007 — saga bu geçişleri RabbitMQ command'leriyle **otomatik** sürer). Bu collection'da bilerek **uydurma `POST /confirm` veya `POST /pay` isteği yoktur**.\n\n**Tetiklenebilir akış (5 dk):**\n1. `Dev Token` → JWT.\n2. `Create Order` → 201; saga otomatik başlar (`OrderPlaced` → stok → ödeme → onay/sevkiyat). Test script `orderId`'yi yazar.\n3. `Get Order By Id` → durum saga ilerledikçe değişir (mutlu yol → `Shipped`; stok/ödeme başarısız → `Cancelled`).\n4. `Get Analytics Projection` → Kafka consume edildikten **sonra** oluşur (birkaç saniye).\n\n`Get Payment By Id`: `paymentId` ancak saga `ProcessPayment` çalışınca üretilir; id'yi PaymentService veya Seq'ten alıp `{{paymentId}}`'ye elle yaz (HTTP ile ödeme tetiklenmez).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Dev Token (anonymous)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dev", "token"]
+            },
+            "description": "Development-only token endpoint (anonymous route → OrderService). Prod'da pipeline'a eklenmez. Body `{}` → rastgele customerId; veya `{ \"customerId\": \"<guid>\" }`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j && j.token) { pm.environment.set('token', j.token); }",
+                  "pm.test('200 OK ve token döndü', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(j.token, 'token').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"street\": \"Bağdat Cad. 1\",\n    \"city\": \"İstanbul\",\n    \"postalCode\": \"34000\",\n    \"country\": \"TR\"\n  },\n  \"items\": [\n    {\n      \"productId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n      \"quantity\": 2,\n      \"unitPrice\": { \"amount\": 150.00, \"currency\": \"TRY\" }\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "Sipariş oluşturur (201). CustomerId **body'de taşınmaz** — token'dan türetilir (IDOR/mass-assignment koruması). Bu istek saga akışını (`OrderPlaced`) otomatik başlatır."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', function () { pm.response.to.have.status(201); });",
+                  "const j = pm.response.json();",
+                  "if (j && j.id) { pm.environment.set('orderId', j.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Order By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}"]
+            },
+            "description": "Siparişi durumuyla getirir. Durum saga ilerledikçe değişir (mutlu yol → Shipped; başarısızlık → Cancelled)."
+          }
+        },
+        {
+          "name": "List Orders (paged)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "Sayfalı sipariş listesi (token'daki müşteriye ait)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Get Payment By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/{{paymentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "{{paymentId}}"]
+            },
+            "description": "Ödemeyi durumuyla getirir (read-only). ★ POST endpoint YOK — ödeme saga `ProcessPayment` command'i ile tetiklenir. `{{paymentId}}`'yi PaymentService/Seq'ten alıp elle set et."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Order Projection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "analytics", "orders", "{{orderId}}"]
+            },
+            "description": "CQRS read-model projection'ı (Kafka order-stream consumer ile güncellenir). Order create edildikten birkaç saniye sonra oluşur. Write endpoint yok."
+          }
+        },
+        {
+          "name": "Get Daily Revenue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/revenue/daily?from=2026-07-01&to=2026-07-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "analytics", "revenue", "daily"],
+              "query": [
+                { "key": "from", "value": "2026-07-01" },
+                { "key": "to", "value": "2026-07-31" }
+              ]
+            },
+            "description": "Tarih aralığı (her iki uç dahil) günlük gelir aggregate'i."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Gateway Liveness",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/live",
+              "host": ["{{baseUrl}}"],
+              "path": ["health", "live"]
+            },
+            "description": "Gateway ayakta mı (downstream'e bağlamaz)."
+          }
+        },
+        {
+          "name": "Health Dashboard (UI)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health-ui",
+              "host": ["{{baseUrl}}"],
+              "path": ["health-ui"]
+            },
+            "description": "6 servisin /health/ready'sini poll eden HealthChecks.UI panosu (HTML). Tarayıcıda aç."
+          }
+        },
+        {
+          "name": "OrderService Readiness (direct dev port)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/health/ready",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["health", "ready"]
+            },
+            "description": "Downstream /health/ready gateway'den route EDİLMEZ (yalnız /api/*). Doğrudan dev port (8080–8086) üzerinden erişilir — bu örnek OrderService içindir; prod'da downstream internal kalır."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" }
+  ]
+}

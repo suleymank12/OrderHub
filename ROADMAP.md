@@ -520,21 +520,22 @@ PaymentFailed → ReleaseStock → CancelOrder
 - [x] 0005 — Custom Inbox (Faz 3)
 - [x] 0006 — Kafka event streaming (Faz 4)
 - [x] 0007 — **Saga orchestration** (orchestration vs choreography seçimi) (Faz 5) — *eski listede yanlışlıkla "0004" yazıyordu*
-- [ ] Faz 7'de: README'ye ADR index linkleri + eksik kalan mimari kararların ADR'leri (gerekirse)
+- [x] 0008 — Gateway edge + distributed observability (Faz 6)
+- [x] 0009 — Database-per-service (Faz 7 — foundational karar, kendi ADR'i yoktu)
+- [x] Faz 7: README'ye ADR index linkleri eklendi + index **0001–0009 tam** (`docs/adr/README.md`)
 
 ## 7.3 Postman / Bruno collection
 
-- [ ] Tüm endpoint'ler için collection
-- [ ] Auth flow (login → token → kullan)
-- [ ] Environment variables
+- [x] Tüm endpoint'ler için collection (`postman/OrderHub.postman_collection.json` — gateway :8000)
+- [x] Auth flow (dev-token → `{{token}}` → Bearer, collection-seviyesi)
+- [x] Environment variables (`OrderHub.postman_environment.json` — baseUrl/token/orderId/paymentId)
+- ★ Dürüst sınır (K2): Confirm/Pay HTTP'de yok (saga command-driven, ADR-0007) → collection'da **uydurma istek yok**
 
 ## 7.4 GitHub Actions
 
-- [ ] `.github/workflows/ci.yml`:
-  - Trigger: push, pull_request
-  - Steps: restore, build, test, coverage report upload
-  - Container build (no push — sadece build doğrulama)
-- [ ] Build status badge README'de
+- [x] `.github/workflows/ci.yml` — **iki-job:** fast (build+unit+lint, her push/PR) + integration (Testcontainers sıralı + coverage + container-build, PR/main). ★ DRY: `check-acceptance.ps1` reuse (`-TestScope`/`-Coverage`).
+- [x] Build status badge README'de (`suleymank12/OrderHub`)
+- ★ Dürüst: ci.yml yazıldı + YAML/yapı **yerel** doğrulandı; **gerçek yeşil PR #7 koşumunda görülür** (sahte "yeşil" iddiası yok)
 
 ## 7.5 Kabul Kriteri
 
