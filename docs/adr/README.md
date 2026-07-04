@@ -22,10 +22,17 @@ hangi problem, hangi seçenekler, hangi kriterler, neden bu, hangi yeni sorunlar
 
 ## Index
 
-| #    | Başlık                                          | Durum    | Tarih      |
-|------|-------------------------------------------------|----------|------------|
-| [0001](0001-migration-in-docker.md) | Docker'da veritabanı migration stratejisi | Accepted | 2026-06-01 |
-| [0008](0008-gateway-edge-and-observability.md) | Gateway edge + distributed observability (Faz 6) | Accepted | 2026-07-03 |
+| #    | Başlık                                          | Faz  | Durum    | Tarih      |
+|------|-------------------------------------------------|------|----------|------------|
+| [0001](0001-migration-in-docker.md) | Docker'da veritabanı migration stratejisi | 1 | Accepted | 2026-06-01 |
+| [0002](0002-in-process-domain-event-dispatch.md) | In-process domain event dispatch | 2–3 | Accepted | 2026-06-01 |
+| [0003](0003-hangfire-storage-and-timeout-reliability.md) | Hangfire storage, timeout reliability ve dashboard security | 2 | Accepted | 2026-06-01 |
+| [0004](0004-masstransit-rabbitmq.md) | MassTransit + RabbitMQ (command messaging layer) | 3 | Accepted | 2026-06-01 |
+| [0005](0005-custom-inbox.md) | Custom Inbox (consumer-side dedup) | 3 | Accepted | 2026-06-02 |
+| [0006](0006-kafka-event-streaming.md) | Kafka event streaming (RabbitMQ command-only, Kafka event-log) | 4 | Accepted | 2026-06-25 |
+| [0007](0007-saga-orchestration.md) | Saga orchestration (orchestration vs choreography) | 5 | Accepted | 2026-06-26 |
+| [0008](0008-gateway-edge-and-observability.md) | Gateway edge + distributed observability | 6 | Accepted | 2026-07-03 |
+| [0009](0009-database-per-service.md) | Database-per-service (servis başına ayrı DB) | 7 | Accepted | 2026-07-04 |
 
 ## İlgili
 

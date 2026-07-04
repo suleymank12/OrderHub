@@ -13,12 +13,28 @@
       K3  — Hardcoded secret taraması (kaynak + appsettings).
       LOCK— Her csproj'un packages.lock.json'u var mı (reproducible restore).
       BUILD — Solution derleniyor mu (0 warning, 0 error).
-      TEST  — Tüm testler geçiyor mu (0 fail).
+      TEST  — Testler geçiyor mu (0 fail); -TestScope ile kapsam, -Coverage ile coverage.
       DOCKER— docker compose dosyası syntax geçerli mi.
+
+.PARAMETER TestScope
+    All  (varsayılan) → tüm test projeleri (unit + integration, sıralı).
+    Unit → yalnız *.UnitTests (Testcontainers YOK — CI 'fast' job'u için hızlı feedback).
+    None → TEST adımı atlanır.
+
+.PARAMETER Coverage
+    Ayarlıysa TEST adımı 'XPlat Code Coverage' toplar (coverage/raw/**). CI 'integration'
+    job'u tek koşumda hem test hem coverage üretir → çift-test tuzağı yok.
 
 .NOTES
     Exit 0 → tüm kontroller geçti. Exit 1 → en az bir kontrol başarısız.
+    Parametresiz çağrı = eski davranış (All, coverage yok) — geriye dönük uyumlu.
 #>
+
+param(
+    [ValidateSet('All', 'Unit', 'None')]
+    [string]$TestScope = 'All',
+    [switch]$Coverage
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -140,19 +156,36 @@ else {
 # (KOD REGRESYONU DEĞİL, makine kapasitesi). Sıralı koşum aynı anda yalnız TEK projenin container'larını kaldırır →
 # güvenilir. Assembly-İÇİ paralelizm zaten integration'da [CollectionBehavior(DisableTestParallelization)] ile kapalı;
 # cross-assembly paralelizm runner (bu script) seviyesinde çözülür — xUnit assembly attribute'u bunu kapsamaz.
-Write-Host 'TEST — Test paketi (0 fail, proje-proje sıralı → Testcontainers over-subscription önlenir):' -ForegroundColor Yellow
-$testProjects = $csprojs | Where-Object { $_.FullName -match '[\\/]tests[\\/]' } | Sort-Object FullName
-$failedProjects = [System.Collections.Generic.List[string]]::new()
-foreach ($proj in $testProjects) {
-    & dotnet test $proj.FullName -c Debug --no-build --nologo | Out-Null
-    if ($LASTEXITCODE -ne 0) { $failedProjects.Add($proj.BaseName) }
-}
-if ($failedProjects.Count -eq 0) {
-    Add-Result 'TEST' $true ("{0} test projesi sıralı geçti" -f @($testProjects).Count)
+$scopeLabel = switch ($TestScope) { 'Unit' { 'yalnız unit' } 'None' { 'ATLANDI' } default { 'tüm suite' } }
+$covLabel = if ($Coverage) { ' + coverage' } else { '' }
+Write-Host ("TEST — {0}{1}, proje-proje sıralı (Testcontainers over-subscription önlenir):" -f $scopeLabel, $covLabel) -ForegroundColor Yellow
+if ($TestScope -eq 'None') {
+    Add-Result 'TEST' $true 'atlandı (-TestScope None)'
 }
 else {
-    foreach ($f in $failedProjects) { Write-Host ("      FAIL: {0} — 'dotnet test' ile detay" -f $f) -ForegroundColor Red }
-    Add-Result 'TEST' $false ("{0} test projesi başarısız" -f $failedProjects.Count)
+    $testProjects = $csprojs | Where-Object { $_.FullName -match '[\\/]tests[\\/]' }
+    if ($TestScope -eq 'Unit') { $testProjects = $testProjects | Where-Object { $_.BaseName -match 'UnitTests$' } }
+    $testProjects = $testProjects | Sort-Object FullName
+    # -Coverage: aynı SIRALI koşumda coverage topla → CI'da ayrı ikinci test koşumu (çift-test) gerekmez.
+    $coverageArgs = @()
+    if ($Coverage) {
+        $coverageRaw = Join-Path $repoRoot 'coverage/raw'
+        if (Test-Path $coverageRaw) { Remove-Item -Recurse -Force $coverageRaw }
+        New-Item -ItemType Directory -Force -Path $coverageRaw | Out-Null
+        $coverageArgs = @('--collect:XPlat Code Coverage', '--results-directory', $coverageRaw)
+    }
+    $failedProjects = [System.Collections.Generic.List[string]]::new()
+    foreach ($proj in $testProjects) {
+        & dotnet test $proj.FullName -c Debug --no-build --nologo @coverageArgs | Out-Null
+        if ($LASTEXITCODE -ne 0) { $failedProjects.Add($proj.BaseName) }
+    }
+    if ($failedProjects.Count -eq 0) {
+        Add-Result 'TEST' $true ("{0} test projesi sıralı geçti ({1}{2})" -f @($testProjects).Count, $scopeLabel, $covLabel)
+    }
+    else {
+        foreach ($f in $failedProjects) { Write-Host ("      FAIL: {0} — 'dotnet test' ile detay" -f $f) -ForegroundColor Red }
+        Add-Result 'TEST' $false ("{0} test projesi başarısız" -f $failedProjects.Count)
+    }
 }
 
 # ── DOCKER: compose syntax ──────────────────────────────────────────────────

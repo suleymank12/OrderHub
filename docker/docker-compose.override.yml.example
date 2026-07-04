@@ -44,3 +44,16 @@ services:
   inventoryservice:
     ports:
       - "8084:8080" # health-only → http://localhost:8084/health/ready (5b'de Swagger/HTTP API yok; 8080-8083 çakışmasın)
+
+  orderprocessingservice:
+    ports:
+      - "8085:8080" # health-only → http://localhost:8085/health/ready (saga host, HTTP API yok; 8080-8084 çakışmasın)
+
+  notificationservice:
+    ports:
+      - "8086:8080" # health-only → http://localhost:8086/health/ready (Kafka consumer, HTTP API yok; 8080-8085 çakışmasın)
+
+  gateway:
+    ports:
+      - "8000:8080" # ★ TEK dışa açık giriş (edge). Dev: downstream 8080-8086 de expose (doğrudan Swagger/debug);
+                    # prod: yalnız gateway expose, downstream'ler internal kalır (dokümante sınır — dev convenience).
