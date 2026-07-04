@@ -1,0 +1,101 @@
+name: CI
+
+# İki-job stratejisi (state-discovery kararı):
+#   • fast        → her push + PR: build + unit + lint (K1/K3/LOCK) + compose syntax. Testcontainers YOK → hızlı feedback.
+#   • integration → PR (main) + push (main): FULL Testcontainers suite (sıralı) + coverage + container-build. Merge kapısı.
+# DRY: her iki job da scripts/check-acceptance.ps1'i çağırır (yerel faz kapısıyla AYNI kontroller — kopyalama yok,
+# tek kaynak). Fark yalnız -TestScope/-Coverage parametreleri. "Yerelde yeşil ama CI'da farklı" olamaz.
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+# Aynı ref'e yeni push gelince eski koşumu iptal et (runner dakikası israf olmasın).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fast:
+    name: fast (build · unit · lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # --locked-mode: packages.lock.json'a birebir uyum (reproducible restore; sürpriz transitive sürüm yok).
+      - name: Restore (locked)
+        run: dotnet restore OrderHub.sln --locked-mode
+
+      # Tek kaynak: K1 (400 satır) · K3 (secret) · LOCK · BUILD (0 warn/err) · TEST (yalnız unit — container yok) · DOCKER (compose syntax).
+      - name: Quality gate — unit scope
+        shell: pwsh
+        run: ./scripts/check-acceptance.ps1 -TestScope Unit
+
+  integration:
+    name: integration (Testcontainers · coverage)
+    runs-on: ubuntu-latest
+    # Yavaş (Testcontainers + container-build). Sadece PR ve main push'ta koşar — her feature-push'ta değil.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore (locked)
+        run: dotnet restore OrderHub.sln --locked-mode
+
+      # FULL faz kapısı: K1/K3/LOCK/BUILD + tüm suite (unit + Testcontainers integration, proje-proje sıralı) + DOCKER.
+      # -Coverage: testler TEK koşumda coverage toplar (çift-test yok). ubuntu-latest'te Docker kurulu →
+      # SQL Server / RabbitMQ / Kafka container'ları Testcontainers ile kalkar.
+      - name: Quality gate — full suite + coverage
+        shell: pwsh
+        run: ./scripts/check-acceptance.ps1 -Coverage
+
+      # Kapı fail olsa bile üretilen kısmi coverage'ı raporla (always).
+      - name: Coverage report
+        if: always()
+        shell: pwsh
+        run: |
+          dotnet tool restore
+          dotnet tool run reportgenerator `
+            "-reports:coverage/raw/**/coverage.cobertura.xml" `
+            "-targetdir:coverage/report" `
+            "-reporttypes:Html;TextSummary"
+          if (Test-Path coverage/report/Summary.txt) { Get-Content coverage/report/Summary.txt }
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/report
+          if-no-files-found: warn
+
+      # Container build doğrulama: 7 servis Dockerfile'ı derleniyor mu (no push — yalnız build).
+      # Testcontainers hazır base image'ları kullanır; kendi servis image'larımızı burada derleyip doğruluyoruz.
+      - name: Container build (no push)
+        run: docker compose -f docker/docker-compose.yml build

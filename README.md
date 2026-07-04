@@ -1,5 +1,7 @@
 # OrderHub
 
+[![CI](https://github.com/suleymank12/OrderHub/actions/workflows/ci.yml/badge.svg)](https://github.com/suleymank12/OrderHub/actions/workflows/ci.yml)
+
 > **.NET 8 event-driven e-commerce microservices** — Clean Architecture, CQRS, saga orchestration,
 > transactional outbox, RabbitMQ + Kafka messaging, YARP gateway, Polly resilience ve OpenTelemetry
 > distributed tracing üzerine kurulu, uçtan uca çalışan bir referans (showcase) sistemi.
