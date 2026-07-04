@@ -6,7 +6,7 @@
 > transactional outbox, RabbitMQ + Kafka messaging, YARP gateway, Polly resilience ve OpenTelemetry
 > distributed tracing üzerine kurulu, uçtan uca çalışan bir referans (showcase) sistemi.
 
-**Status:** ✅ Phase 7 tamamlandı — tüm fazlar (1–7) `main`'de birleşti (#7). Build **0 warning / 0 error**, **418 test** yeşil, kalite kapısı (`check-acceptance.ps1`) **6/6**; canlı CI durumu için üstteki rozete bakın. Mülakat/CV-hazır referans sistemi.
+**Status:** ✅ Phase 7 tamamlandı — tüm fazlar (1–7) `main`'de birleşti (#7). Build **0 warning / 0 error**, **418 test** yeşil, kalite kapısı (`check-acceptance.ps1`) **6/6**; canlı CI durumu için üstteki rozete bakın.
 
 ---
 
