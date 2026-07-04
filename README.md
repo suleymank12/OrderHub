@@ -6,7 +6,7 @@
 > transactional outbox, RabbitMQ + Kafka messaging, YARP gateway, Polly resilience ve OpenTelemetry
 > distributed tracing üzerine kurulu, uçtan uca çalışan bir referans (showcase) sistemi.
 
-**Status:** ✅ Phase 6 tamamlandı (Gateway + Resilience + Observability) · Phase 7 devam ediyor (Docs + CI)
+**Status:** ✅ Phase 7 tamamlandı — tüm fazlar (1–7) `main`'de birleşti (#7). Build **0 warning / 0 error**, **418 test** yeşil, kalite kapısı (`check-acceptance.ps1`) **6/6**; canlı CI durumu için üstteki rozete bakın. Mülakat/CV-hazır referans sistemi.
 
 ---
 
@@ -315,8 +315,8 @@ OrderHub/
 │       └── OrderHub.Gateway/         # YARP saf-edge (hiçbir servise ProjectReference yok)
 ├── tests/                            # 18 test projesi (unit + Testcontainers integration + e2e)
 ├── docs/
-│   ├── adr/                          # Architecture Decision Records (0001–0008)
-│   └── pr/                           # Faz kapanış notları (phase-3 … phase-6)
+│   ├── adr/                          # Architecture Decision Records (0001–0009)
+│   └── pr/                           # Faz kapanış notları (phase-3 … phase-7)
 ├── docker/                           # docker-compose.yml + .env.example + override.yml.example
 ├── scripts/                          # check-acceptance.ps1 (faz kalite kapısı) + coverage.ps1
 ├── CLAUDE.md                         # Proje mutlak kuralları (K1–K5)
